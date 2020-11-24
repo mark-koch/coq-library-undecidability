@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import RelationClasses Morphisms List Omega Init.Nat Setoid.
+Require Import RelationClasses Morphisms List Omega Lia Init.Nat Setoid.
 From Undecidability.HOU Require Import calculus.calculus unification.unification second_order.diophantine_equations.
 Import ListNotations.
 
@@ -28,7 +28,7 @@ Proof. econstructor; cbn; eauto. Qed.
 Lemma typing_g Gamma: Gamma ⊢(2) g : alpha → alpha → alpha.
 Proof. econstructor; cbn; eauto. Qed.
 
-Hint Resolve typing_a typing_g.
+Hint Resolve typing_a typing_g : core.
 
 (** ** Encoding *)
 Section Linearization.
@@ -160,7 +160,7 @@ Section Encoding.
     - eapply normal_app_intro; [|eapply normal_app_intro|]; eauto.
   Qed.
 
-  Hint Resolve enc_normal.
+  Hint Resolve enc_normal : core.
 
 
   Lemma enc_injective n m s t:
@@ -240,7 +240,7 @@ Section Encoding.
 
 End Encoding.
 
-Hint Resolve enc_normal.
+Hint Resolve enc_normal : core.
 Hint Rewrite enc_zero enc_succ enc_app enc_succ_out: simplify.
 Hint Rewrite enc_ren enc_subst: asimpl.
 
@@ -405,7 +405,7 @@ Arguments G : simpl never.
 Arguments Fs : simpl never.
 Arguments Gs : simpl never.
 
-Hint Resolve F_not_in_G G_not_in_F.
+Hint Resolve F_not_in_G G_not_in_F : core.
 
 (** ** Diophantine Equations Encoding *)
 Section Equations.
@@ -469,7 +469,7 @@ Section Typing.
     intros H. unfold Gamma__deq. rewrite tab_nth.
     destruct (partition_F_G) as [[x ?]|[[[x y] z] ? ]]; subst; intuition.
     eapply G_not_in_F in H as [].
-    eapply Sum_in in H. omega.
+    eapply Sum_in in H. lia.
   Qed.
 
   Lemma Gamma__deq_nth_G h:
@@ -478,7 +478,7 @@ Section Typing.
     intros H. unfold Gamma__deq. rewrite tab_nth.
     destruct (partition_F_G) as [[x ?]|[[[x y] z] ? ]]; subst; intuition.
     eapply F_not_in_G in H as [].
-    eapply Sum_in in H. omega.
+    eapply Sum_in in H. lia.
   Qed.
 
 
@@ -540,7 +540,7 @@ Section Typing.
     now eapply Gamma__deq_nth_G, Gs_in.
   Qed.
 
-  Hint Resolve typing_G typing_F.
+  Hint Resolve typing_G typing_F : core.
 
   Ltac autotype :=
     repeat match goal with

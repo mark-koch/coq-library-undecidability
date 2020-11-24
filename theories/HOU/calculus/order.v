@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import List Omega.
+Require Import List Omega Lia.
 From Undecidability.HOU.calculus Require Export syntax semantics equivalence typing.
 
  (** * Order Typing *)
@@ -37,7 +37,7 @@ Section OrderTyping.
     Lemma ord_arr_one A B: ~ ord (A → B) <= 1.
     Proof.
       intros H; rewrite ord_arr in H; eapply Nat.max_lub_l in H.
-      rewrite ord_1 with (A := A) in H; omega.
+      rewrite ord_1 with (A := A) in H; lia.
     Qed.
 
 
@@ -68,8 +68,6 @@ Section OrderTyping.
     Lemma ord'_in A Gamma: A ∈ Gamma -> ord A <= ord' Gamma.
     Proof.
       induction Gamma; cbn in *; intuition; subst; eauto.
-      eauto using Max.max_lub_l. 
-      transitivity (ord' Gamma); eauto using Max.max_lub_r. 
     Qed.
     
     Lemma ord'_elements n Gamma: (forall A, A ∈ Gamma -> ord A <= n) <-> ord' Gamma <= n.
@@ -81,7 +79,7 @@ Section OrderTyping.
     Lemma ord'_cons n Gamma A:
       ord A < n -> ord' Gamma <= n -> ord' (A :: Gamma) <= n.
     Proof.
-      intros; cbn; eapply Max.max_lub; omega.
+      intros; cbn; eapply Max.max_lub; lia.
     Qed.
 
     Lemma order_head Gamma s A B:
@@ -106,7 +104,7 @@ Section OrderTyping.
     
 
   End Order.
-  Hint Resolve ord'_cons. 
+  Hint Resolve ord'_cons : core. 
 
 
   (** ** Order Typing *)
@@ -124,7 +122,7 @@ Section OrderTyping.
   where "Gamma '⊢(' n ')' s ':' A" := (ordertyping n Gamma s A).
 
 
-  Hint Constructors ordertyping.
+  Hint Constructors ordertyping : core.
 
 
 
@@ -141,7 +139,7 @@ Section OrderTyping.
   Qed.
   
 
-  Hint Resolve ordertyping_monotone.
+  Hint Resolve ordertyping_monotone : core.
 
   
   Lemma ordertyping_soundness n Gamma s A:
@@ -299,13 +297,13 @@ Notation "Gamma '⊢(' n ')' s ':' A" :=
   (ordertyping n Gamma s A) (at level 80, s at level 99).
 Notation "Delta ⊩( n ) sigma : Gamma" := (ordertypingSubst n Delta sigma Gamma) (at level 80, sigma at level 99).
 
-Hint Constructors ordertyping.
+Hint Constructors ordertyping : core.
 Hint Rewrite ord_arr ord'_app ord'_rev : simplify. 
-Hint Resolve ord'_cons ord'_in .
-Hint Resolve vars_ordertyping_nth ordertyping_monotone ordertyping_step ordertyping_soundness.
+Hint Resolve ord'_cons ord'_in  : core.
+Hint Resolve vars_ordertyping_nth ordertyping_monotone ordertyping_step ordertyping_soundness : core.
 
 Hint Resolve 
      ordertyping_preservation_under_renaming
-     ordertyping_preservation_under_substitution.
+     ordertyping_preservation_under_substitution : core.
 
-Hint Resolve ord_target ord_target'.
+Hint Resolve ord_target ord_target' : core.

@@ -9,8 +9,10 @@
 
 (** ** Bitwise operations on nat as list bool *)
 
-Require Import List Omega Bool Setoid.
-From Undecidability.Shared.Libs.DLW.Utils Require Import utils_tac.
+Require Import List Lia Bool Setoid.
+
+From Undecidability.Shared.Libs.DLW.Utils 
+  Require Import utils_tac.
 
 Set Implicit Arguments.
 
@@ -24,7 +26,7 @@ Set Implicit Arguments.
   Local Notation lb := (list bool).
   Local Notation "⟘" := false.
   Local Notation "⟙" := true.
-  Local Infix "⪦" := leb (at level 70, no associativity).
+  Local Infix "⪦" := Bool.le (at level 70, no associativity).
 
   Fact leb_refl : forall x, x ⪦ x.
   Proof. intros []; simpl; auto. Qed.
@@ -35,7 +37,7 @@ Set Implicit Arguments.
   Fact leb_strict : ⟘ ⪦ ⟙.
   Proof. exact I. Qed. 
 
-  Hint Resolve leb_refl leb_trans leb_strict.
+  Hint Resolve leb_refl leb_trans leb_strict : core.
 
   (** We develop the Boolean algebra of lists of Booleans *)
 
@@ -53,7 +55,7 @@ Set Implicit Arguments.
   Fact lb_mask_inv_left x l : x::l ⪯  nil -> x = ⟘ /\ l ⪯  nil.
   Proof. inversion 1; auto. Qed. 
 
-  Fact lb_mask_inv_cons x y l m : x::l ⪯ y::m -> leb x y /\ l ⪯  m.
+  Fact lb_mask_inv_cons x y l m : x::l ⪯ y::m -> Bool.le x y /\ l ⪯  m.
   Proof. inversion 1; tauto. Qed.
 
   Fact lb_mask_inv_cons_nil l : ⟙::l ⪯ nil -> False.
@@ -88,7 +90,7 @@ Set Implicit Arguments.
         intros [] [] []; simpl; auto.
   Qed.
 
-  Hint Resolve lb_mask_refl lb_mask_trans.
+  Hint Resolve lb_mask_refl lb_mask_trans : core.
 
   Definition lb_mask_equiv l m := l ⪯ m /\ m ⪯ l.
 
@@ -103,7 +105,7 @@ Set Implicit Arguments.
   Fact lb_mask_equiv_trans l m k : l ≂ m -> m ≂ k -> l ≂ k.
   Proof. intros [] []; split; eauto. Qed.
 
-  Hint Resolve in_lb_mask_0 lb_mask_refl lb_mask_equiv_refl.
+  Hint Resolve in_lb_mask_0 lb_mask_refl lb_mask_equiv_refl : core.
 
   Add Parametric Relation: (lb) (lb_mask_equiv)
       reflexivity proved by  lb_mask_equiv_refl
@@ -144,7 +146,7 @@ Set Implicit Arguments.
     | in_lb_ortho_2 : forall x y l m, (x = ⟘ \/ y = ⟘) -> l ⟂ m -> x::l ⟂ y::m
   where "x ⟂ y" := (lb_ortho x y).
 
-  Hint Constructors lb_ortho.
+  Hint Constructors lb_ortho : core.
 
   Fact lb_ortho_cons_inv x y l m : x::l ⟂ y::m -> (x = ⟘ \/ y = ⟘) /\ l ⟂ m.
   Proof. inversion 1; auto. Qed.
@@ -203,9 +205,9 @@ Set Implicit Arguments.
     Fact lb_pointwise_length n l m : length l <= n -> length m <= n -> length (lb_pointwise l m) <= n.
     Proof.
       revert l m; induction n as [ | n IHn ].
-      + intros [] []; simpl; omega.
+      + intros [] []; simpl; lia.
       + intros [ | x l ] [ | y m ]; simpl; try rewrite map_length; auto.
-        intros; apply le_n_S, IHn; omega.
+        intros; apply le_n_S, IHn; lia.
     Qed.
 
     Fact lb_pointwise_sym l m : (forall x y, f x y = f y x) -> lb_pointwise l m = lb_pointwise m l.
@@ -219,7 +221,7 @@ Set Implicit Arguments.
         * do 2 rewrite lb_pointwise_cons; f_equal; auto.
     Qed.
 
-    Variable (Hf1 : forall x a b, leb a b -> leb (f x a) (f x b)) 
+    Variable (Hf1 : forall x a b, Bool.le a b -> Bool.le (f x a) (f x b)) 
              (Hf2 : f ⟘ ⟘ = ⟘).
 
     Let lbpw_mono_1 l m :  lb_pointwise l nil ⪯   lb_pointwise l m.
@@ -232,7 +234,7 @@ Set Implicit Arguments.
         * apply lb_mask_leb; auto.
     Qed.
 
-    Let lbpw_mono_f_0 g l m : g ⟘ = ⟘ -> leb (g ⟘) (g ⟙) -> l ⪯ m -> map g l ⪯  map g m.
+    Let lbpw_mono_f_0 g l m : g ⟘ = ⟘ -> Bool.le (g ⟘) (g ⟙) -> l ⪯ m -> map g l ⪯  map g m.
     Proof.
       intros H1 H2.
       assert (Hg : forall x y, x ⪦ y -> g x ⪦ g y).
@@ -388,7 +390,7 @@ Set Implicit Arguments.
         apply lb_mask_inv_nil in H; constructor; auto.
   Qed.
 
-  Hint Resolve lb_mask_equiv_refl.
+  Hint Resolve lb_mask_equiv_refl : core.
 
   Fact lb_join_inc_left a b : a ⪯  a↑b.
   Proof.
@@ -418,7 +420,7 @@ Set Implicit Arguments.
   Fact lb_meet_dec_right a b : a↓b ⪯  b.
   Proof. rewrite lb_meet_comm; apply lb_meet_dec_left. Qed.
   
-  Hint Resolve lb_join_inc_left lb_join_inc_right lb_meet_dec_left lb_meet_dec_right.
+  Hint Resolve lb_join_inc_left lb_join_inc_right lb_meet_dec_left lb_meet_dec_right : core.
 
   Fact lb_mask_join a b : a ⪯  b <-> a↑b ≂ b.
   Proof.
@@ -525,7 +527,7 @@ Set Implicit Arguments.
           destruct x; destruct y; destruct z; simpl; auto.
   Qed.
 
-  Hint Resolve lb_meet_mono lb_join_mono.
+  Hint Resolve lb_meet_mono lb_join_mono : core.
   
   Fact lb_join_spec a b c : a ⪯  c -> b ⪯  c -> a↑b ⪯  c.
   Proof. intros; rewrite <- (lb_join_idem c); auto. Qed.

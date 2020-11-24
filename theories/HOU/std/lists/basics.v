@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import List Omega Morphisms FinFun Init.Wf.
+Require Import List Omega Lia Morphisms FinFun Init.Wf.
 From Undecidability.HOU Require Import std.decidable.
 Import ListNotations.
 
@@ -135,16 +135,16 @@ Section BasicLemmas.
 
 
   Lemma incl_distr_left A B C: A ⊆ B -> A ⊆ B ++ C.
-  Proof. firstorder. Qed.
+  Proof. intuition. Qed.
 
   Lemma incl_distr_right A B C: A ⊆ C -> A ⊆ B ++ C. 
-  Proof. firstorder.  Qed.
+  Proof. intuition.  Qed.
 
   Lemma incl_app_project_left A B C: A ++ B ⊆ C -> A ⊆ C.
-  Proof. firstorder. Qed. 
+  Proof. intros H x Hx. eapply H, in_app_iff. eauto. Qed.
 
   Lemma incl_app_project_right A B C: A ++ B ⊆ C -> B ⊆ C.
-  Proof. firstorder. Qed.
+  Proof. intros H x Hx. eapply H, in_app_iff. eauto. Qed.
 
   Lemma incl_app_build A B C: A ⊆ C -> B ⊆ C -> A ++ B ⊆ C.
   Proof. intros; eapply incl_app; intuition. Qed.
@@ -201,7 +201,7 @@ Section BasicLemmas.
       eapply le_lt_or_eq in H4 as []; eauto; exfalso.
       eapply NoDup_length_incl in H3. 
       rewrite !nodup_seteq in H3; intuition.
-      eapply NoDup_nodup. omega.
+      eapply NoDup_nodup. lia.
     Qed.
     
   End WellFoundedStrictInclusion.
@@ -209,7 +209,7 @@ Section BasicLemmas.
   (* app *)
   Global Instance proper_app_incl: Proper (incl ++> incl ++> incl) (@app X).
   Proof.
-    intros A A' H1 B B' H2; induction A; firstorder.  
+    intros A A' H1 B B' H2; induction A; firstorder auto with *.
   Qed.
   
   Global Instance proper_app_seteq: Proper (seteq ++> seteq ++> seteq) (@app X).
@@ -305,7 +305,7 @@ Section BasicLemmas.
 
   (* filter *)
   Lemma filter_length p A: length (filter p A) <= length A.
-  Proof. induction A; cbn; [ constructor | ]; destruct (p a); cbn; omega. Qed.
+  Proof. induction A; cbn; [ constructor | ]; destruct (p a); cbn; lia. Qed.
 
 
   Global Instance filter_incl_proper: Proper (eq ++> incl ++> incl) (@filter X).
@@ -342,7 +342,7 @@ Hint Rewrite app_length map_length rev_length : listdb.
 Hint Extern 4 => 
   match goal with
   |[ H: ?x ∈ nil |- _ ] => destruct H
-  end.
+  end : core.
 
 
 

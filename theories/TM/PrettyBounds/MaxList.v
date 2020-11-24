@@ -1,6 +1,6 @@
 (** * Maximum element in a list *)
 
-From Undecidability Require Export TM.Prelim TM.ArithPrelim.
+From Undecidability Require Export TM.Util.Prelim TM.Util.ArithPrelim.
 
 (** ** Basic lemmas about upper bounds *)
 
@@ -19,8 +19,8 @@ Proof.
       * right. split.
         -- intros [<- | H]; congruence.
         -- intros y [-> | H].
-           ++ specialize (HUb y ltac:(now left)). omega.
-           ++ specialize (IH2 y H). omega.
+           ++ specialize (HUb y ltac:(now left)). lia.
+           ++ specialize (IH2 y H). lia.
 Qed.
 
 (** We assume that [M] is an upper bound of [s] and [xs]. We also assume that [M] is either in xs, or every element of [x] is smaller than [s]. Then, if [M] is actually a strict upper bound of [xs], then [s] is also a strict upper bound of [xs]. *)
@@ -120,7 +120,8 @@ Lemma max_list_rec_monotone' (xs1 xs2 : list nat) (s0 s1 : nat) :
 Proof.
   intros H. revert s0 s1. induction H; intros; cbn.
   - assumption.
-  - rewrite IHForall2. apply max_list_rec_monotone. all: nia.
+  - rewrite IHForall2. apply max_list_rec_monotone.
+    instantiate (1 := Init.Nat.max x s0). all:nia. 
 Qed.
 
 (** [max_list_rec] is a lower bound of [z], if every element is smaller than [z]. *)
@@ -175,7 +176,7 @@ Lemma max_list_rec_el_or_eq xs s :
 Proof.
   revert s. induction xs as [ | x xs IH]; intros; cbn in *; eauto.
   rewrite !max_list_rec_max.
-  assert (max_list_rec s xs <= max_list_rec x xs \/ max_list_rec x xs <= max_list_rec s xs) as [H|H] by omega.
+  assert (max_list_rec s xs <= max_list_rec x xs \/ max_list_rec x xs <= max_list_rec s xs) as [H|H] by lia.
   - rewrite !max_l by assumption.
     specialize (IH x) as [IH|[<- IH]].
     + left. eauto.
@@ -245,7 +246,7 @@ Proof. intros. unfold max_list. rewrite <- max_list_rec_ge_el; eauto. Qed.
 Lemma max_list_lower_bound (xs : list nat) (z : nat) :
   (forall x, In x xs -> x <= z) ->
   max_list xs <= z.
-Proof. intros. unfold max_list. apply max_list_rec_lower_bound. omega. auto. Qed.
+Proof. intros. unfold max_list. apply max_list_rec_lower_bound. lia. auto. Qed.
 
 Lemma max_list_monotone (f : nat -> nat) (xs : list nat) :
   (forall x, x <= f x) ->
@@ -262,7 +263,7 @@ Lemma max_list_In (xs : list nat) :
 Proof.
   destruct xs as [ | x xs]; [ congruence | intros _].
   pose proof max_list_rec_In (x :: xs) 0 as [ (_&Absurd) | NotSoAbsurd ].
-  - exfalso. specialize (Absurd x ltac:(auto)). omega.
+  - exfalso. specialize (Absurd x ltac:(auto)). lia.
   - apply NotSoAbsurd.
 Qed.
 

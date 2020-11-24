@@ -1,18 +1,19 @@
-
 all:
-	+make -C theories all
+	export TIMED
+	$(MAKE) -C theories all
 
-deps:
-	+make -C external all
+install:
+	$(MAKE) -C theories install
 
 clean:
-	+make -C theories clean
-
-realclean:
-	+make -C external clean
-	+make -C theories clean
+	$(MAKE) -C theories clean
 
 html:
-	+make -C theories website
+	$(MAKE) -C theories html
 
-.PHONY: all html clean realclean
+.PHONY: all install html clean 
+
+dummy:
+
+%.vo: dummy
+	cd theories && $(MAKE) $@

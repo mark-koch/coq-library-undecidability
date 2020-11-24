@@ -1,13 +1,15 @@
 From Undecidability.L.Tactics Require Import LTactics.
-Require Import PslBase.Base List.
 From Undecidability.L.Computability Require Import Enum.
 From Undecidability.L.Functions Require Import Encoding Equality.
 From Undecidability.L.Datatypes Require Import LNat Lists LProd.
+Require Import Undecidability.Shared.Libs.PSL.Base Nat List Datatypes.
 
+Import Nat.
 (** ** Enumeratibility of L-terms *)
-Instance term_appCross : computable appCross.
+Instance term_appCross : computableTime' appCross (fun A _ => (5,fun B _ => (length A * length B * 29 + length A * 46 +  4,tt))).
 Proof.
-  extract.
+  extract. solverec. fold appCross;rewrite map_time_const,map_length. 
+  unfold c__map, c__app. Lia.nia.
 Defined.
 
 Instance term_exh_size : computable exh_size.
@@ -105,7 +107,6 @@ Proof.
   edestruct (inb_spec (prod_eqb_spec Nat.eqb_spec Nat.eqb_spec) a l); decide (~ a el l); try (exfalso;tauto);reflexivity.
 Qed.
 
-
 Local Instance term_C_nondec : computable C_nondec.
 Proof.
   assert (computable f_filter) by extract.
@@ -127,6 +128,5 @@ Qed.
 
 Instance term_c : computable c.
 Proof.
-  unfold c. (* TODO: Wy is this needed?*)
   extract. 
 Qed.

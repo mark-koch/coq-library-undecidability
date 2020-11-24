@@ -1,6 +1,6 @@
 (** * Primitive Two-tape machines *)
 
-From Undecidability Require Import TM.TM.
+From Undecidability Require Import TM.Util.TM_facts.
 
 
 (** ** Read two symbols *)
@@ -10,9 +10,9 @@ Section CaseChar2.
   Variable sig : finType.
   Variable (F : finType) (f : option sig -> option sig -> F).
 
-  Definition CaseChar2_TM : mTM sig 2 :=
+  Definition CaseChar2_TM : TM sig 2 :=
     {|
-      trans := fun '(_, sym) => (Some (f sym[@Fin0] sym[@Fin1]), [| (None, N); (None, N) |]);
+      trans := fun '(_, sym) => (Some (f sym[@Fin0] sym[@Fin1]), [| (None, Nmove); (None, Nmove) |]);
       start := None;
       halt := fun s => match s with
                     | None => false
@@ -69,7 +69,7 @@ Arguments ReadChar2_Rel sig x y /.
 (** ** Tactic Support *)
 
 Ltac smpl_TM_Duo :=
-  lazymatch goal with
+  once lazymatch goal with
   | [ |- CaseChar2 _ ⊨ _] => eapply RealiseIn_Realise; eapply CaseChar2_Sem
   | [ |- CaseChar2 _ ⊨c(_) _] => eapply CaseChar2_Sem
   | [ |- projT1 (CaseChar2 _) ↓ _] => eapply RealiseIn_TerminatesIn; eapply CaseChar2_Sem

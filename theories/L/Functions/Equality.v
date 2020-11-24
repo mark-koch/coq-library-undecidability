@@ -1,7 +1,7 @@
-From Undecidability.L Require Export Datatypes.LBool Datatypes.LNat Functions.Encoding.
-Require Export Nat.
-From Undecidability.L Require Import Tactics.LTactics.
-
+From Undecidability.L Require Export Datatypes.LBool Datatypes.LNat Datatypes.LTerm.
+Require Import Nat.
+From Undecidability.L Require Import Tactics.LTactics Functions.EqBool.
+Import EqBool.
 (** * Extracted Functions *)
 
 (** ** Extracted equality of encoded natural numbers *)
@@ -24,35 +24,32 @@ Defined.*)
 Fixpoint term_eqb s t :=
   match s,t with
   | var n, var m => eqb n m
-  | app s1 t1, app s2 t2 => andb (term_eqb s1 s2) (term_eqb t1 t2)
+  | L.app s1 t1, L.app s2 t2 => andb (term_eqb s1 s2) (term_eqb t1 t2)
   | lam s',lam t' => term_eqb s' t'
   | _,_ => false
   end.
 
-Instance term_term_eqb : computable term_eqb.
-Proof.
-  extract.
-Defined.
-
-
 Lemma term_eqb_spec : forall x y1 : term, reflect (x = y1) (term_eqb x y1).
 Proof with try (constructor;congruence).
   induction x;cbn; destruct y1...
-  -destruct (Nat.eqb_spec n n0)...
+  - destruct (eqb_spec n n0)...
   -destruct (IHx1 y1_1)...
    destruct (IHx2 y1_2)...
   -destruct (IHx y1)...
-Qed.  
+Qed.
 
-(*
-Instance term_term_eq_dec : computable term_eq_dec.
+Instance eqbTerm : eqbClass term_eqb.
 Proof.
-  pose (f x y := to_sumbool (term_eqb x y)).
-  internalizeWith f. Lsimpl.
-  apply reflect_dec.
-  revert y0. induction y as [x | s1 H1 s2 H2| s H];intros [y | t1 t2| t];cbn;try constructor;try congruence.
-  -dec;constructor;congruence. 
-  -specialize (H1 t1). specialize (H2 t2). do 2 destruct (term_eqb);simpl in *; constructor;inv H1;inv H2;try congruence.
-  -destruct (H t);constructor;congruence.
-Defined.
-*)
+  exact term_eqb_spec. 
+Qed.
+
+
+Instance eqbComp_nat : eqbCompT term.
+Proof.
+  evar (c:nat). exists c. unfold term_eqb.
+  unfold enc;cbn. unfold term_enc.
+  extract. unfold eqb,eqbTime.
+  [c]:exact (5 + c__eqbComp nat).
+  all:unfold c. set (c__eqbComp nat). change (LNat.nat_enc) with (enc (X:=nat)).
+  solverec. all:try nia. 
+Qed.

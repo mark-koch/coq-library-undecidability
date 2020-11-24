@@ -1,6 +1,6 @@
 (** * Copying Machines and Helper functions for verifying machines using [CopySymbols] ane [MoveToSymbol] *)
 
-Require Import FunInd.
+From Coq Require Import FunInd.
 
 From Undecidability Require Import TM.Code.CodeTM.
 From Undecidability Require Export TM.Compound.CopySymbols TM.Compound.MoveToSymbol.
@@ -11,7 +11,8 @@ From Undecidability Require Import TM.Compound.TMTac TM.Compound.Multi.
 From Undecidability Require Import TM.Lifting.LiftAlphabet.
 
 
-Generalizable All Variables.
+Local Generalizable All Variables.
+Set Default Proof Using "Type".
 
 
 (* Don't simplify [skipn (S n) xs]; only, if the number and the lists are constructors *)
@@ -71,9 +72,9 @@ Section Copy.
      midtape (rev rs ++ m :: left (t2)) x (skipn (S (|rs|)) (right t2))).
   Proof.
     intros HStopM HStopRs HStopX.
-    unshelve epose proof @CopySymbols_correct (midtape ls m (rs ++ x :: rs'), t2) (m::rs) x rs' _ _ _ as L; cbn in *; eauto.
+    unshelve epose proof @CopySymbols_correct (midtape ls m (rs ++ x :: rs'), t2) (m::rs) x rs' _ _ _ as Lmove; cbn in *; eauto.
     - intros ? [->|?]; auto.
-    - now rewrite <- !app_assoc in L.
+    - now rewrite <- !app_assoc in Lmove.
   Qed.
 
   Corollary CopySymbols_correct_moveright ls m rs x rs' t2:
@@ -99,9 +100,9 @@ Section Copy.
      midtape (skipn (|str1|) (left (snd t))) x (rev str1 ++ right (snd t))).
   Proof.
     intros HStop1 HStop2. intros HEnc.
-    pose proof @CopySymbols_correct (mirror_tape (fst t), mirror_tape (snd t)) str1 x str2 HStop1 HStop2 as L.
-    spec_assert L by now (cbn; simpl_tape).
-    apply CopySymbols_mirror. rewrite L. unfold mirror_tapes; cbn. f_equal; [ | f_equal]; now simpl_tape.
+    pose proof @CopySymbols_correct (mirror_tape (fst t), mirror_tape (snd t)) str1 x str2 HStop1 HStop2 as Lmove.
+    spec_assert Lmove by now (cbn; simpl_tape).
+    apply CopySymbols_mirror. rewrite Lmove. unfold mirror_tapes; cbn. f_equal; [ | f_equal]; now simpl_tape.
   Qed.
 
   Corollary CopySymbols_L_correct_midtape ls ls' m rs x t2 :
@@ -113,9 +114,9 @@ Section Copy.
      midtape (skipn (S (|ls|)) (left t2)) x (rev ls ++ m :: right t2)).
   Proof.
     intros HStopM HStopRs HStopX.
-    unshelve epose proof @CopySymbols_L_correct (midtape (ls ++ x :: ls') m rs, t2) (m::ls) x ls' _ _ _ as L; cbn in *; eauto.
+    unshelve epose proof @CopySymbols_L_correct (midtape (ls ++ x :: ls') m rs, t2) (m::ls) x ls' _ _ _ as Lmove; cbn in *; eauto.
     - intros ? [->|?]; auto.
-    - now rewrite <- !app_assoc in L.
+    - now rewrite <- !app_assoc in Lmove.
   Qed.
 
   Corollary CopySymbols_L_correct_moveleft ls x ls' m rs t2 :
@@ -133,173 +134,17 @@ Section Copy.
   
 
   Variable f : sig -> sig.
-
-  Lemma MoveToSymbol_correct t str1 str2 x :
-    (forall x, List.In x str1 -> stop x = false) ->
-    (stop x = true) ->
-    tape_local t = str1 ++ x :: str2 ->
-    MoveToSymbol_Fun stop f t = midtape (rev (map f str1) ++ left t) (f x) str2.
-  Proof.
-    intros H H0. destruct t as [ | r rs | l ls | ls m rs]; cbn in *.
-    1,3: rewrite MoveToSymbol_Fun_equation; cbn; destruct str1; cbn in *; try congruence.
-    1: destruct str1; cbn in *; congruence.
-    revert m ls str1 H. revert rs.
-    refine (@size_induction _ (@length sig) _ _); intros [ | s rs'] IH; intros.
-    - rewrite MoveToSymbol_Fun_equation; cbn. destruct str1; cbn in *; inv H1.
-      + rewrite H0. cbn. auto.
-      + destruct str1; cbn in *; congruence.
-    - rewrite MoveToSymbol_Fun_equation; cbn.
-      destruct (stop m) eqn:E1.
-      + cbn. destruct str1; cbn in *; inv H1; eauto. specialize (H _ ltac:(eauto)). congruence.
-      + destruct str1; cbn in *; inv H1.
-        * congruence.
-        * simpl_list. eapply IH; cbn; eauto.
-  Qed.
-
-  Corollary MoveToSymbol_correct_midtape ls rs rs' m x :
-    stop m = false ->
-    (forall x, List.In x rs -> stop x = false) ->
-    stop x = true ->
-    MoveToSymbol_Fun stop f (midtape ls m (rs ++ x :: rs')) =
-    midtape (rev (map f rs) ++ (f m) :: ls) (f x) rs'.
-  Proof.
-    intros HStopM HStopRs HStopX.
-    unshelve epose proof (@MoveToSymbol_correct (midtape ls m (rs ++ x :: rs')) (m::rs) rs' x _ HStopX eq_refl) as L.
-    { intros ? [->|?]; auto. }
-    cbn in *. now rewrite <- app_assoc in L.
-  Qed.
-
-  Corollary MoveToSymbol_correct_moveright ls m rs x rs' :
-    (forall x, List.In x rs -> stop x = false) ->
-    stop x = true ->
-    MoveToSymbol_Fun stop f (tape_move_right' ls m (rs ++ x :: rs')) =
-    midtape (rev (map f rs) ++ m :: ls) (f x) rs'.
-  Proof.
-    intros HStopR HStopX.
-    destruct rs as [ | s s'] eqn:E; cbn.
-    - rewrite MoveToSymbol_Fun_equation. cbn. rewrite HStopX. reflexivity.
-    - rewrite MoveToSymbol_correct_midtape; auto. rewrite <- !app_assoc. reflexivity.
-  Qed.
-
-  Corollary MoveToSymbol_L_correct t str1 str2 x :
-    (forall x, List.In x str1 -> stop x = false) ->
-    (stop x = true) ->
-    tape_local_l t = str1 ++ x :: str2 ->
-    MoveToSymbol_L_Fun stop f t = midtape str2 (f x) (rev (map f str1) ++ right t).
-  Proof.
-    intros. pose proof (@MoveToSymbol_correct (mirror_tape t) str1 str2 x) as L.
-    simpl_tape in L. repeat spec_assert L by auto.
-    erewrite (MoveToSymbol_mirror' (t' := mirror_tape (MoveToSymbol_L_Fun stop f t))) in L; simpl_tape in *; eauto.
-    now apply mirror_tape_inv_midtape in L.
-  Qed.
-
-  Corollary MoveToSymbol_L_correct_midtape ls ls' rs m x :
-    stop m = false ->
-    (forall x, List.In x ls -> stop x = false) ->
-    stop x = true ->
-    MoveToSymbol_L_Fun stop f (midtape (ls ++ x :: ls') m rs) =
-    midtape ls' (f x) (rev (map f ls) ++ (f m) :: rs).
-  Proof.
-    intros HStopM HStopRs HStopX.
-    unshelve epose proof (@MoveToSymbol_L_correct (midtape (ls ++ x :: ls') m rs) (m::ls) ls' x _ HStopX eq_refl) as L.
-    { intros ? [->|?]; auto. }
-    cbn in *. now rewrite <- app_assoc in L.
-  Qed.
-
-  Corollary MoveToSymbol_L_correct_moveleft ls x ls' m rs :
-    (forall x, List.In x ls -> stop x = false) ->
-    stop x = true ->
-    MoveToSymbol_L_Fun stop f (tape_move_left' (ls ++ x :: ls') m rs) =
-    midtape ls' (f x) (rev (map f ls) ++ m :: rs).
-  Proof.
-    intros HStopL HStopX.
-    destruct ls as [ | s s'] eqn:E; cbn.
-    - rewrite MoveToSymbol_L_Fun_equation. cbn. rewrite HStopX. reflexivity.
-    - rewrite MoveToSymbol_L_correct_midtape; auto. rewrite <- !app_assoc. reflexivity.
-  Qed.
-
-
-  (** Termination times *)
-
-  (* The termination times of CopySymbols and MoveTosymbol only differ in the factors *)
-
-  Lemma MoveToSymbol_steps_local t r1 sym r2 :
-    tape_local t = r1 ++ sym :: r2 ->
-    stop sym = true ->
-    MoveToSymbol_steps stop f t <= 4 + 4 * length r1.
-  Proof.
-    revert t sym r2. induction r1; intros t sym r2 HEnc HStop; cbn -[plus mult] in *.
-    - destruct t; cbn in HEnc; inv HEnc. rewrite MoveToSymbol_steps_equation. cbn. rewrite HStop. cbn. omega.
-    - destruct t; cbn in HEnc; try congruence. inv HEnc.
-      rewrite MoveToSymbol_steps_equation. cbn. destruct (stop a).
-      + omega.
-      + apply Nat.add_le_mono_l. replace (4 * S (|r1|)) with (4 + 4 * |r1|) by omega.
-        eapply IHr1; eauto. cbn. now simpl_tape.
-  Qed.
-
-  Corollary MoveToSymbol_steps_midtape ls x m rs rs' :
-    stop x = true ->
-    MoveToSymbol_steps stop f (midtape ls m (rs ++ x :: rs')) <= 8 + 4 * length rs.
-  Proof.
-    intros.
-    rewrite MoveToSymbol_steps_local with (r1 := m::rs) (sym := x) (r2 := rs'); auto.
-    cbn [length]. omega.
-  Qed.
-
-  Corollary MoveToSymbol_steps_moveright ls m rs x rs' :
-    stop x = true ->
-    MoveToSymbol_steps stop f (tape_move_right' ls m (rs ++ x :: rs')) <= 4 + 4 * length rs.
-  Proof.
-    intros HStop. destruct rs as [ | s s'] eqn:E; cbn.
-    - rewrite MoveToSymbol_steps_equation. cbn. rewrite HStop; cbn. omega.
-    - rewrite MoveToSymbol_steps_midtape; auto. omega.
-  Qed.
-
-
-  Lemma MoveToSymbol_L_steps_local t r1 sym r2 :
-    tape_local_l t = r1 ++ sym :: r2 ->
-    stop sym = true ->
-    MoveToSymbol_L_steps stop f t <= 4 + 4 * length r1.
-  Proof.
-    revert t sym r2. induction r1; intros t sym r2 HEnc HStop; cbn -[plus mult] in *.
-    - destruct t; cbn in HEnc; inv HEnc. rewrite MoveToSymbol_L_steps_equation. cbn. rewrite HStop. cbn. omega.
-    - destruct t; cbn in HEnc; try congruence. inv HEnc.
-      rewrite MoveToSymbol_L_steps_equation. cbn. destruct (stop a).
-      + omega.
-      + apply Nat.add_le_mono_l. replace (4 * S (|r1|)) with (4 + 4 * |r1|) by omega.
-        eapply IHr1; eauto. cbn. now simpl_tape.
-  Qed.
-
-  Corollary MoveToSymbol_L_steps_midtape ls ls' x m rs :
-    stop x = true ->
-    MoveToSymbol_L_steps stop f (midtape (ls ++ x :: ls') m rs) <= 8 + 4 * length ls.
-  Proof.
-    intros.
-    rewrite MoveToSymbol_L_steps_local with (r1 := m::ls) (sym := x) (r2 := ls'); auto.
-    cbn [length]. omega.
-  Qed.
-
-  Corollary MoveToSymbol_L_steps_moveleft ls ls' x m rs :
-    stop x = true ->
-    MoveToSymbol_L_steps stop f (tape_move_left' (ls ++ x :: ls') m rs) <= 4 + 4 * length ls.
-  Proof.
-    intros HStop. destruct ls as [ | s s'] eqn:E; cbn.
-    - rewrite MoveToSymbol_L_steps_equation. cbn. rewrite HStop; cbn. omega.
-    - rewrite MoveToSymbol_L_steps_midtape; auto. omega.
-  Qed.
-
-
   Lemma CopySymbols_steps_local t r1 sym r2 :
     tape_local t = r1 ++ sym :: r2 ->
     stop sym = true ->
     CopySymbols_steps stop t <= 8 + 8 * length r1.
   Proof.
     revert t sym r2. induction r1; intros t sym r2 HEnc HStop; cbn -[plus mult] in *.
-    - destruct t; cbn in HEnc; inv HEnc. rewrite CopySymbols_steps_equation. cbn. rewrite HStop. cbn. omega.
+    - destruct t; cbn in HEnc; inv HEnc. rewrite CopySymbols_steps_equation. cbn. rewrite HStop. cbn. lia.
     - destruct t; cbn in HEnc; try congruence. inv HEnc.
       rewrite CopySymbols_steps_equation. cbn. destruct (stop a).
-      + omega.
-      + apply Nat.add_le_mono_l. replace (8 * S (|r1|)) with (8 + 8 * |r1|) by omega.
+      + lia.
+      + apply Nat.add_le_mono_l. replace (8 * S (|r1|)) with (8 + 8 * |r1|) by lia.
         eapply IHr1; eauto. cbn. now simpl_tape.
   Qed.
 
@@ -307,7 +152,7 @@ Section Copy.
     stop x = true ->
     CopySymbols_steps stop (midtape ls m (rs ++ x :: rs')) <= 16 + 8 * length rs.
   Proof.
-    intros. erewrite CopySymbols_steps_local with (r1 := m :: rs); cbn -[plus mult]; eauto. omega.
+    intros. erewrite CopySymbols_steps_local with (r1 := m :: rs); cbn -[plus mult]; eauto. lia.
   Qed.
 
   Corollary CopySymbols_steps_moveright ls m rs x rs' :
@@ -315,8 +160,8 @@ Section Copy.
     CopySymbols_steps stop (tape_move_right' ls m (rs ++ x :: rs')) <= 8 + 8 * length rs.
   Proof.
     intros HStop. destruct rs as [ | s s'] eqn:E; cbn.
-    - rewrite CopySymbols_steps_equation. cbn. rewrite HStop; cbn. omega.
-    - rewrite CopySymbols_steps_midtape; auto. omega.
+    - rewrite CopySymbols_steps_equation. cbn. rewrite HStop; cbn. lia.
+    - rewrite CopySymbols_steps_midtape; auto. lia.
   Qed.
 
   Lemma CopySymbols_L_steps_local t r1 sym r2 :
@@ -325,11 +170,11 @@ Section Copy.
     CopySymbols_L_steps stop t <= 8 + 8 * length r1.
   Proof.
     revert t sym r2. induction r1; intros t sym r2 HEnc HStop; cbn -[plus mult] in *.
-    - destruct t; cbn in HEnc; inv HEnc. rewrite CopySymbols_L_steps_equation. cbn. rewrite HStop. cbn. omega.
+    - destruct t; cbn in HEnc; inv HEnc. rewrite CopySymbols_L_steps_equation. cbn. rewrite HStop. cbn. lia.
     - destruct t; cbn in HEnc; try congruence. inv HEnc.
       rewrite CopySymbols_L_steps_equation. cbn. destruct (stop a).
-      + omega.
-      + apply Nat.add_le_mono_l. replace (8 * S (|r1|)) with (8 + 8 * |r1|) by omega.
+      + lia.
+      + apply Nat.add_le_mono_l. replace (8 * S (|r1|)) with (8 + 8 * |r1|) by lia.
         eapply IHr1; eauto. cbn. now simpl_tape.
   Qed.
 
@@ -337,7 +182,7 @@ Section Copy.
     stop x = true ->
     CopySymbols_L_steps stop (midtape (ls ++ x :: ls') m rs) <= 16 + 8 * length ls.
   Proof.
-    intros. erewrite CopySymbols_L_steps_local with (r1 := m :: ls); cbn -[plus mult]; eauto. omega.
+    intros. erewrite CopySymbols_L_steps_local with (r1 := m :: ls); cbn -[plus mult]; eauto. lia.
   Qed.
 
   Corollary CopySymbols_L_steps_moveleft ls ls' x m rs :
@@ -345,8 +190,8 @@ Section Copy.
     CopySymbols_L_steps stop (tape_move_left' (ls ++ x :: ls') m rs) <= 8 + 8 * length ls.
   Proof.
     intros HStop. destruct ls as [ | s s'] eqn:E; cbn.
-    - rewrite CopySymbols_L_steps_equation. cbn. rewrite HStop; cbn. omega.
-    - rewrite CopySymbols_L_steps_midtape; auto. omega.
+    - rewrite CopySymbols_L_steps_equation. cbn. rewrite HStop; cbn. lia.
+    - rewrite CopySymbols_L_steps_midtape; auto. lia.
   Qed.
   
 
@@ -389,14 +234,14 @@ Section Move.
            tin[@Fin0] ≂(;s) x ->
            tout[@Fin0] ≃(;s) x).
 
-  Definition Reset_size {sigX : Type} (cX : codable sigX X) (x : X) (s : nat) := S (size cX x + s).
+  Definition Reset_size {sigX : Type} {cX : codable sigX X} (x : X) (s : nat) := S (size x + s).
 
   Definition Reset_Rel : Rel (tapes (sig^+) 1) (unit * tapes (sig^+) 1) :=
     ignoreParam
       (fun tin tout =>
          forall (s : nat) (x:X),
            tin[@Fin0] ≃(;s) x ->
-           isRight_size tout[@Fin0] (Reset_size _ x s)).
+           isVoid_size tout[@Fin0] (Reset_size x s)).
 
   Lemma MoveRight_Realise : MoveRight ⊨ MoveRight_Rel.
   Proof.
@@ -404,8 +249,8 @@ Section Move.
     { unfold MoveRight. TM_Correct. }
     {
       intros tin ((), tout) H. intros x s HEncX.
-      TMSimp; clear_trivial_eqs. clear H0.
-      destruct HEncX as (r1&->&Hs).
+      TMSimp; clear_trivial_eqs.
+      destruct HEncX as (r1&->&Hs). 
       erewrite MoveToSymbol_correct_midtape; eauto.
       - repeat econstructor. now rewrite map_id, map_rev. auto.
       - apply stop_not_in.
@@ -418,7 +263,7 @@ Section Move.
     { unfold MoveLeft. TM_Correct. }
     {
       intros tin ((), tout) H. intros x s HEncX.
-      TMSimp; clear_trivial_eqs. clear H0.
+      TMSimp; clear_trivial_eqs.
       destruct HEncX as (r1&->&Hs).
       erewrite MoveToSymbol_L_correct_midtape; eauto.
       - repeat econstructor. now rewrite map_id, <- map_rev, rev_involutive. auto.
@@ -432,11 +277,11 @@ Section Move.
     { unfold Reset. eapply MoveRight_Realise. }
     {
       intros tin ((), tout) H. intros x s HEncX.
-      TMSimp. eapply tape_contains_rev_size_isRight; eauto.
+      TMSimp. eapply tape_contains_rev_size_isVoid; eauto.
     }
   Qed.
 
-  Definition MoveRight_steps {sigX : Type} (cX : codable sigX X) (x : X) := 8 + 4 * size cX x.
+  Definition MoveRight_steps {sigX : Type} (cX : codable sigX X) (x : X) := 8 + 4 *size x.
 
   Lemma MoveRight_Terminates :
     projT1 MoveRight ↓ (fun tin k => exists x, tin[@Fin0] ≃ x /\ MoveRight_steps _ x <= k).
@@ -450,10 +295,10 @@ Section Move.
     }
   Qed.
 
-  Definition MoveLeft_steps {sigX : Type} (cX : codable sigX X) x := 8 + 4 * size cX x.
+  Definition MoveLeft_steps {sigX : Type} {cX : codable sigX X} (x:X) := 8 + 4 *size x.
 
   Lemma MoveLeft_Terminates :
-    projT1 MoveLeft ↓ (fun tin k => exists x, tin[@Fin0] ≂ x /\ MoveLeft_steps _ x <= k).
+    projT1 MoveLeft ↓ (fun tin k => exists x, tin[@Fin0] ≂ x /\ MoveLeft_steps x <= k).
   Proof.
     unfold MoveLeft_steps. eapply TerminatesIn_monotone.
     { unfold MoveLeft. TM_Correct. }
@@ -464,13 +309,13 @@ Section Move.
     }
   Qed.
 
-  Definition Reset_steps {sigX : Type} (cX : codable sigX X) x := 8 + 4 * size cX x.
+  Definition Reset_steps {sigX : Type} {cX : codable sigX X} (x:X) := 8 + 4 *size x.
 
   Definition Reset_Terminates :
-    projT1 Reset ↓ (fun tin k => exists x, tin[@Fin0] ≃ x /\ Reset_steps _ x <= k).
+    projT1 Reset ↓ (fun tin k => exists x, tin[@Fin0] ≃ x /\ Reset_steps x <= k).
   Proof. exact MoveRight_Terminates. Qed.
 
-  Definition ResetEmpty : pTM sig^+ unit 1 := Move R.
+  Definition ResetEmpty : pTM sig^+ unit 1 := Move Rmove.
 
   Definition ResetEmpty_size : nat -> nat := S.
 
@@ -480,7 +325,7 @@ Section Move.
           forall (s : nat) (x : X),
             tin[@Fin0] ≃(;s) x ->
             cX x = nil ->
-            isRight_size tout[@Fin0] (ResetEmpty_size s)
+            isVoid_size tout[@Fin0] (ResetEmpty_size s)
         ).
 
   Definition ResetEmpty_steps := 1.
@@ -491,14 +336,14 @@ Section Move.
     { unfold ResetEmpty. TM_Correct. }
     { reflexivity. }
     {
-      intros tin ((), tout) H. cbn. intros s x HEncX HCod.
+      intros tin ((), tout) H. cbn. intros s x HEncX HCod. 
       unfold ResetEmpty_size in *.
-      destruct HEncX as (ls&HEncX). TMSimp; clear_trivial_eqs.
-      hnf. do 2 eexists. split. f_equal. cbn. omega.
+      destruct HEncX as (ls&HEncX). TMSimp; clear_trivial_eqs. rewrite HCod;cbn.
+      hnf. do 2 eexists. split. f_equal. cbn. lia.
     }
   Qed.
 
-  Definition ResetEmpty1 : pTM sig^+ (FinType(EqType unit)) 1 := Move R;; Move R.
+  Definition ResetEmpty1 : pTM sig^+ (FinType(EqType unit)) 1 := Move Rmove;; Move Rmove.
 
   Definition ResetEmpty1_size : nat -> nat := S >> S.
 
@@ -507,8 +352,8 @@ Section Move.
         fun tin tout =>
           forall (x : X) (s : nat),
             tin[@Fin0] ≃(;s) x ->
-            size cX x = 1 ->
-            isRight_size tout[@Fin0] (ResetEmpty1_size s)).
+           size x = 1 ->
+            isVoid_size tout[@Fin0] (ResetEmpty1_size s)).
 
   Definition ResetEmpty1_steps := 3.
 
@@ -521,8 +366,8 @@ Section Move.
       intros tin ((), tout) H. cbn. intros x s HEncX HCod.
       unfold ResetEmpty1_size in *.
       destruct HEncX as (ls&HEncX). unfold size in *. TMSimp; clear_trivial_eqs.
-      destruct (cX x); cbn in *; inv HCod. destruct l; cbn in *; inv H4.
-      hnf. do 2 eexists. split. f_equal. cbn. omega.
+      destruct (cX x); cbn in *; inv HCod. destruct l; cbn in *; inv H0.
+      hnf. do 2 eexists. split. f_equal. cbn. lia.
     }
   Qed.
 
@@ -541,16 +386,16 @@ Section CopyValue.
   Definition CopyValue :=
     LiftTapes (MoveRight _) [|Fin0|];; CopySymbols_L (@isStart sig).
 
-  Definition CopyValue_size {sig: Type} (cX : codable sig X) (x : X) (s1 : nat) := s1 - S (size _ x).
+  Definition CopyValue_size {sig: Type} {cX : codable sig X} (x : X) (s1 : nat) := s1 - S (size x).
 
   Definition CopyValue_Rel : Rel (tapes (sig^+) 2) (unit * tapes (sig^+) 2) :=
     ignoreParam (
         fun tin tout =>
           forall (x:X) (sx s1 : nat),
             tin[@Fin0] ≃(;sx) x ->
-            isRight_size tin[@Fin1] s1 ->
+            isVoid_size tin[@Fin1] s1 ->
             tout[@Fin0] ≃(;sx) x /\
-            tout[@Fin1] ≃(;CopyValue_size _ x s1) x
+            tout[@Fin1] ≃(;CopyValue_size x s1) x
       ).
 
 
@@ -569,16 +414,16 @@ Section CopyValue.
       - apply pair_inv in HCopy as (HCopy1&HCopy2). TMSimp. split.
         + hnf. eexists. rewrite map_rev, rev_involutive. split. f_equal. auto.
         + hnf. eexists. rewrite map_rev, rev_involutive. split. f_equal.
-          simpl_list. rewrite skipn_length. cbn. unfold CopyValue_size, size. omega.
+          simpl_list. rewrite skipn_length. cbn. unfold CopyValue_size, size. lia.
       - now intros ? (?&<-&?) % in_map_iff.
     }
   Qed.
 
 
-  Definition CopyValue_steps {sig:Type} (cX : codable sig X) x := 25 + 12 * size cX x.
+  Definition CopyValue_steps {sig:Type} {cX : codable sig X} (x:X) := 25 + 12 *size x.
 
   Lemma CopyValue_Terminates :
-    projT1 CopyValue ↓ (fun tin k => exists x:X, tin[@Fin0] ≃ x /\ CopyValue_steps _ x <= k).
+    projT1 CopyValue ↓ (fun tin k => exists x:X, tin[@Fin0] ≃ x /\ CopyValue_steps x <= k).
   Proof.
     unfold CopyValue_steps. eapply TerminatesIn_monotone.
     { unfold CopyValue. TM_Correct.
@@ -588,7 +433,7 @@ Section CopyValue.
       intros tin k (x&HEncX&Hk).
       exists (8 + 4 * length (Encode_map _ _ x : list sig)), (16 + 8 * length (Encode_map _ _ x : list sig)). repeat split; cbn; eauto.
       - exists x. split. auto. unfold MoveRight_steps, size. now rewrite map_length.
-      - unfold size in *. rewrite !map_length. omega.
+      - unfold size in *. rewrite !map_length. lia.
       - intros tmid () (H1&HInj). TMSimp.
         apply tape_contains_contains_size in HEncX.
         specialize H1 with (1 := HEncX).
@@ -616,8 +461,8 @@ Section MoveValue.
     CopyValue _;;
     LiftTapes (Reset _) [|Fin0|].
 
-  Definition MoveValue_size_x {sigX : Type} {cX : codable sigX X} (x : X) (sx : nat) := S (size cX x + sx).
-  Definition MoveValue_size_y {sigX sigY : Type} {cX : codable sigX X} {cY : codable sigY Y} (x : X) (y : Y) (sy : nat) := sy + size cY y - size cX x.
+  Definition MoveValue_size_x {sigX : Type} {cX : codable sigX X} (x : X) (sx : nat) := S (size x + sx).
+  Definition MoveValue_size_y {sigX sigY : Type} {cX : codable sigX X} {cY : codable sigY Y} (x : X) (y : Y) (sy : nat) := sy + size cY y -size x.
 
   Definition MoveValue_Rel : pRel sig^+ unit 2 :=
     ignoreParam (
@@ -625,7 +470,7 @@ Section MoveValue.
           forall (x : X) (y : Y) (sx sy : nat),
             tin[@Fin0] ≃(;sx) x ->
             tin[@Fin1] ≃(;sy) y ->
-            isRight_size tout[@Fin0] (MoveValue_size_x x sx) /\
+            isVoid_size tout[@Fin0] (MoveValue_size_x x sx) /\
             tout[@Fin1] ≃(;MoveValue_size_y x y sy) x).
 
   Lemma MoveValue_Realise : MoveValue ⊨ MoveValue_Rel.
@@ -641,12 +486,12 @@ Section MoveValue.
       TMSimp. unfold MoveValue_size_x, MoveValue_size_y, CopyValue_size, Reset_size in *.
       specialize H with (1 := HEncY).
       specialize H0 with (1 := HEncX) (2 := H) as (H0&H0').
-      specialize H1 with (1 := H0).
+      specialize H2 with (1 := H0).
       repeat split; auto.
     }
   Qed.
 
-  Definition MoveValue_steps {sigX sigY:Type} {cX : codable sigX X} {cY : codable sigY Y} x y := 43 + 16 * size cX x + 4 * size cY y.
+  Definition MoveValue_steps {sigX sigY:Type} {cX : codable sigX X} {cY : codable sigY Y} (x:X) (y:Y) := 43 + 16 *size x + 4 * size cY y.
 
   Lemma MoveValue_Terminates :
     projT1 MoveValue ↓ (fun tin k => exists (x : X) (y : Y), tin[@Fin0] ≃ x /\ tin[@Fin1] ≃ y /\ MoveValue_steps x y <= k).
@@ -662,13 +507,13 @@ Section MoveValue.
     {
       intros tin k (x&y&HEncX&HEncY&Hk).
       exists (8 + 4 * length (cY y)), (34 + 16 * length (cX x)). repeat split; cbn; eauto.
-      - unfold size in *. omega.
+      - unfold size in *. lia.
       - intros tmid1 () (H1&HInj1). TMSimp.
         apply tape_contains_contains_size in HEncX; apply tape_contains_contains_size in HEncY.
         specialize H1 with (1 := HEncY).
         exists (25 + 12 * length (cX x)), (8 + 4 * length (cX x)). repeat split; cbn; eauto.
-        + omega.
-        + intros tmid2 () H2.
+        + lia.
+        + intros tmid2_ () H2.
           specialize H2 with (1 := HEncX) (2 := H1) as (H2&H2').
           exists x. split; eauto.
     }
@@ -722,10 +567,10 @@ Section Translate.
     }
   Qed.
 
-  Definition Translate'_steps {sigX X : Type} {cX : codable sigX X} x := 8 + 4 * size cX x.
+  Definition Translate'_steps {sigX X : Type} {cX : codable sigX X} (x:X) := 8 + 4 *size x.
 
   Lemma Translate'_Terminates :
-    projT1 Translate' ↓ (fun tin k => exists x, tin[@Fin0] ≃(I1) x /\ Translate'_steps x <= k).
+    projT1 Translate' ↓ (fun tin k => exists x, tin[@Fin0] ≃(I1) x /\ Translate'_steps (cX:=cX) x <= k).
   Proof.
     eapply TerminatesIn_monotone.
     { unfold Translate'. TM_Correct. }
@@ -752,7 +597,7 @@ Section Translate.
     eapply Realise_monotone.
     { unfold Translate. TM_Correct.
       - apply Translate'_Realise.
-      - apply MoveLeft_Realise with (I := I2).
+      - apply MoveLeft_Realise with (I := I2) (cX:=cX).
     }
     {
       intros tin ((), tout) H. intros x s HEncX.
@@ -761,7 +606,7 @@ Section Translate.
   Qed.
 
 
-  Definition Translate_steps {sigX:Type} {cX : codable sigX X} (x : X) := 17 + 8 * size cX x.
+  Definition Translate_steps {sigX:Type} {cX : codable sigX X} (x : X) := 17 + 8 *size x.
 
   Definition Translate_T : tRel sig^+ 1 :=
     fun tin k => exists x, tin[@Fin0] ≃(I1) x /\ Translate_steps x <= k.
@@ -773,16 +618,16 @@ Section Translate.
     { unfold Translate. TM_Correct.
       - apply Translate'_Realise.
       - apply Translate'_Terminates.
-      - apply MoveLeft_Terminates.
+      - eapply MoveLeft_Terminates.
     }
     {
       intros tin k (x&HEncX&Hk). unfold Translate_steps in *.
-      exists (8 + 4 * size cX x), (8 + 4 * size cX x). repeat split; try omega.
+      exists (8 + 4 *size x), (8 + 4 *size x). repeat split; try lia.
       eexists. repeat split; eauto.
       intros tmid () H. cbn in H.
       apply tape_contains_contains_size in HEncX.
       specialize H with (1 := HEncX). 
-      exists x. split. eauto. unfold MoveLeft_steps. omega.
+      exists x. split. eauto. unfold MoveLeft_steps. lia.
     }
   Qed.
 
@@ -790,3 +635,226 @@ End Translate.
 
 Arguments Translate_steps {X sigX cX}.
 (* no size *)
+
+
+(* The exact retracts can be instantiated later, during the relation-inclusion proof *)
+Ltac smpl_TM_Copy :=
+  once lazymatch goal with
+  | [ |- Translate _ _ ⊨ _] => notypeclasses refine (@Translate_Realise _  _ _ _ _ _);shelve
+  | [ |- projT1 (Translate _ _) ↓ _] => notypeclasses refine (@Translate_Terminates _ _ _ _ _ _);shelve
+  | [ |- Reset _ ⊨ _] => notypeclasses refine (@Reset_Realise _ _ _ _ _);shelve
+  | [ |- projT1 (Reset _) ↓ _] => notypeclasses refine (@Reset_Terminates _ _ _ _ _);shelve
+  | [ |- CopyValue _ ⊨ _] => notypeclasses refine (@CopyValue_Realise _ _ _ _ _);shelve
+  | [ |- projT1 (CopyValue _) ↓ _] => notypeclasses refine (@CopyValue_Terminates _ _ _ _ _);shelve
+  | [ |- MoveValue _ ⊨ _] => notypeclasses refine (@MoveValue_Realise _ _ _ _ _ _ _ _ _);shelve
+  | [ |- projT1 (MoveValue _) ↓ _] => notypeclasses refine (@MoveValue_Terminates _ _ _ _ _ _ _ _ _);shelve
+  end.
+
+Smpl Add smpl_TM_Copy : TM_Correct.
+
+
+
+From Undecidability Require Import HoareLogic HoareRegister HoareTactics.
+
+(** We give all rule variants here, because automation is forbidden for these machines *)
+
+(* TODO: [CopyValue_size] should be renamed, and this function should be moved to [Code.v] *)
+Definition CopyValue_sizefun {sigX X : Type} {cX : codable sigX X} (x : X) : Vector.t (nat->nat) 2 := [|id; CopyValue_size x|].
+
+Lemma CopyValue_SpecT_size (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) (ss : Vector.t nat 2) :
+  TripleT (≃≃([],withSpace [|Contains _ x; Void|] ss))
+          (CopyValue_steps x) (CopyValue sig)
+          (fun _ => ≃≃([],withSpace [|Contains _ x; Contains _ x|] (appSize (CopyValue_sizefun x) ss))).
+Proof.
+  eapply Realise_TripleT.
+  - eapply CopyValue_Realise.
+  - eapply CopyValue_Terminates.
+  - intros tin [] tout H HEnc. unfold withSpace in *|-. cbn in *. 
+    specialize (HEnc Fin0) as HEnc0; specialize (HEnc Fin1) as HEnc1. 
+    cbn in *; simpl_vector in *; cbn in *.
+    modpon H. tspec_solve.
+  - intros tin k HEnc. cbn in *. unfold withSpace in *.
+    specialize (HEnc Fin0) as HEnc0; specialize (HEnc Fin1) as HEnc1.
+    cbn in *; simpl_vector in *; cbn in *. eauto.
+Qed.
+
+Lemma CopyValue_SpecT (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  TripleT (≃≃([],[|Contains _ x; Void|])) (CopyValue_steps x) (CopyValue sig) (fun _ => ≃≃([],[|Contains _ x; Contains _ x|])).
+Proof. eapply TripleT_RemoveSpace. cbn. intros s. apply CopyValue_SpecT_size. Qed.
+
+Lemma CopyValue_Spec_size (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) (ss : Vector.t nat 2) :
+  Triple (≃≃(([], withSpace  [|Contains _ x; Void|] ss)))
+         (CopyValue sig)
+         (fun _ => ≃≃(([], withSpace  [|Contains _ x; Contains _ x|] (appSize (CopyValue_sizefun x) ss)))).
+Proof. eapply TripleT_Triple. apply CopyValue_SpecT_size. Qed.
+
+Lemma CopyValue_Spec (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  Triple (≃≃([], [|Contains _ x; Void|]))
+         (CopyValue sig)
+         (fun _ => ≃≃([], [|Contains _ x; Contains _ x|])).
+Proof. eapply Triple_RemoveSpace. apply CopyValue_Spec_size. Qed.
+
+
+
+Lemma Reset_SpecT_space (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) (ss : Vector.t nat 1) :
+  TripleT (≃≃([],  withSpace  [|Contains _ x |] ss)) (Reset_steps x) (Reset sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|Reset_size x|] ss)))).
+Proof.
+  eapply Realise_TripleT.
+  - eapply Reset_Realise.
+  - eapply Reset_Terminates.
+  - intros tin [] tout H HEnc. unfold withSpace in *. cbn in *.
+    specialize (HEnc Fin0); cbn in *. simpl_vector in *; cbn in *.
+    modpon H.
+    tspec_solve.
+  - intros tin k HEnc. unfold withSpace in *. cbn in *.
+    specialize (HEnc Fin0). simpl_vector in *; cbn in *. eauto.
+Qed.
+
+Lemma Reset_SpecT (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  TripleT (≃≃([], [|Contains _ x|])) (Reset_steps x) (Reset sig) (fun _ => ≃≃([], [|Void|])).
+Proof. eapply TripleT_RemoveSpace. apply Reset_SpecT_space. Qed.
+
+Lemma Reset_Spec_size (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) ss :
+  Triple (≃≃(([], withSpace  [|Contains _ x |] ss))) (Reset sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|Reset_size x|] ss)))).
+Proof. eapply TripleT_Triple. apply Reset_SpecT_space. Qed.
+
+Lemma Reset_Spec (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  Triple (≃≃([], [|Contains _ x|])) (Reset sig) (fun _ => ≃≃([], [|Void|])).
+Proof. eapply TripleT_Triple. apply Reset_SpecT. Qed.
+
+Lemma ResetEmpty_SpecT_space (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) (ss : Vector.t nat 1) :
+  cX x = [] ->
+  TripleT (≃≃(([], withSpace  [|Contains _ x |] ss))) (ResetEmpty_steps) (ResetEmpty sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|ResetEmpty_size|] ss)))).
+Proof.
+  intros HEncEmpty. eapply RealiseIn_TripleT.
+  - eapply ResetEmpty_Sem.
+  - intros tin [] tout H HEnc. unfold withSpace in *. cbn in *.
+    specialize (HEnc Fin0); cbn in *. simpl_vector in *; cbn in *.
+    modpon H. tspec_solve.
+Qed.
+
+Lemma ResetEmpty_SpecT (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  cX x = [] ->
+  TripleT (≃≃([], [|Contains _ x|])) (ResetEmpty_steps) (ResetEmpty sig) (fun _ => ≃≃([], [|Void|])).
+Proof. intros. eapply TripleT_RemoveSpace. intros. now apply ResetEmpty_SpecT_space. Qed.
+
+Lemma ResetEmpty_Spec_size (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) ss :
+  cX x = [] ->
+  Triple (≃≃(([], withSpace  [|Contains _ x |] ss))) (ResetEmpty sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|ResetEmpty_size|] ss)))).
+Proof. intros. eapply TripleT_Triple. now apply ResetEmpty_SpecT_space. Qed.
+
+Lemma ResetEmpty_Spec (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+  cX x = [] ->
+  Triple (≃≃([], [|Contains _ x|])) (ResetEmpty sig) (fun _ => ≃≃([], [|Void|])).
+Proof. intros. eapply TripleT_Triple. now apply ResetEmpty_SpecT. Qed.
+
+
+
+
+Lemma ResetEmpty1_SpecT_space (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) (ss : Vector.t nat 1) :
+ size x = 1 ->
+  TripleT (≃≃(([], withSpace  [|Contains _ x |] ss))) (ResetEmpty1_steps) (ResetEmpty1 sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|ResetEmpty1_size|] ss)))).
+Proof.
+  intros HEncEmpty. eapply RealiseIn_TripleT.
+  - eapply ResetEmpty1_Sem.
+  - intros tin [] tout H HEnc. cbn in *. unfold withSpace in *.
+    specialize (HEnc Fin0); cbn in *. simpl_vector in *; cbn in *.
+    modpon H. tspec_solve.
+Qed.
+
+Lemma ResetEmpty1_SpecT (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+ size x = 1 ->
+  TripleT (≃≃([], [|Contains _ x|])) (ResetEmpty1_steps) (ResetEmpty1 sig) (fun _ => ≃≃([], [|Void|])).
+Proof. intros. eapply TripleT_RemoveSpace. intros. now apply ResetEmpty1_SpecT_space. Qed.
+
+Lemma ResetEmpty1_Spec_size (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) ss :
+ size x = 1 ->
+  Triple (≃≃(([], withSpace  [|Contains _ x |] ss))) (ResetEmpty1 sig) (fun _ => ≃≃(([], withSpace  [|Void|] (appSize [|ResetEmpty1_size|] ss)))).
+Proof. intros. eapply TripleT_Triple. now apply ResetEmpty1_SpecT_space. Qed.
+
+Lemma ResetEmpty1_Spec (sig : finType) (sigX X : Type) (cX : codable sigX X) (I : Retract sigX sig) (x : X) :
+ size x = 1 ->
+  Triple (≃≃([], [|Contains _ x|])) (ResetEmpty1 sig) (fun _ => ≃≃([], [|Void|])).
+Proof. intros. eapply TripleT_Triple. now apply ResetEmpty1_SpecT. Qed.
+
+
+(* TODO: Move to [Code/Copy.v] *)
+Definition MoveValue_size {X Y sigX sigY : Type} {cX : codable sigX X} {cY : codable sigY Y} (x : X) (y : Y) : Vector.t (nat->nat) 2 :=
+  [|MoveValue_size_x x; MoveValue_size_y x y|].
+
+Lemma MoveValue_SpecT_size (sig : finType) (sigX sigY X Y : Type)
+      (cX : codable sigX X) (cY : codable sigY Y) (I1 : Retract sigX sig) (I2 : Retract sigY sig) (x : X) (y : Y) (ss : Vector.t nat 2) :
+  TripleT (≃≃(([], withSpace  [|Contains _ x; Contains _ y |] ss))) (MoveValue_steps x y) (MoveValue sig)
+          (fun _ => ≃≃(([], withSpace  [|Void; Contains _ x|] (appSize (MoveValue_size x y) ss)))).
+Proof. unfold withSpace.
+  eapply Realise_TripleT.
+  - apply MoveValue_Realise with (X := X) (Y := Y).
+  - apply MoveValue_Terminates with (X := X) (Y := Y).
+  - intros tin [] tout H HEnc. cbn in *.
+    specialize (HEnc Fin0) as HEnc0; specialize (HEnc Fin1) as HEnc1. simpl_vector in *; cbn in *.
+    modpon H. tspec_solve.
+  - intros tin k HEnc. cbn in *.
+    specialize (HEnc Fin0) as HEnc0; specialize (HEnc Fin1) as HEnc1. simpl_vector in *; cbn in *. eauto.
+Qed.
+
+Lemma MoveValue_SpecT (sig : finType) (sigX sigY X Y : Type)
+      (cX : codable sigX X) (cY : codable sigY Y) (I1 : Retract sigX sig) (I2 : Retract sigY sig) (x : X) (y : Y) :
+  TripleT (≃≃([], [|Contains _ x; Contains _ y|])) (MoveValue_steps x y) (MoveValue sig) (fun _ => ≃≃([], [|Void; Contains _ x|])).
+Proof. eapply TripleT_RemoveSpace. apply MoveValue_SpecT_size. Qed.
+
+Lemma MoveValue_Spec_size (sig : finType) (sigX sigY X Y : Type)
+      (cX : codable sigX X) (cY : codable sigY Y) (I1 : Retract sigX sig) (I2 : Retract sigY sig) (x : X) (y : Y) (ss : Vector.t nat 2) :
+  Triple (≃≃(([], withSpace  [|Contains _ x; Contains _ y |] ss))) (MoveValue sig)
+         (fun _ => ≃≃(([], withSpace  [|Void; Contains _ x|] (appSize (MoveValue_size x y) ss)))).
+Proof. eapply TripleT_Triple. apply MoveValue_SpecT_size. Qed.
+
+Lemma MoveValue_Spec (sig : finType) (sigX sigY X Y : Type)
+      (cX : codable sigX X) (cY : codable sigY Y) (I1 : Retract sigX sig) (I2 : Retract sigY sig) (x : X) (y : Y) :
+  Triple (≃≃([], [|Contains _ x; Contains _ y|])) (MoveValue sig) (fun _ => ≃≃([], [|Void; Contains _ x|])).
+Proof. eapply TripleT_Triple. apply MoveValue_SpecT. Qed.
+
+
+Lemma Translate_SpecT_size (sig : finType) (sigX X : Type)
+      (cX : codable sigX X) (I1 I2 : Retract sigX sig) (x : X) (ss : Vector.t nat 1) :
+  TripleT (≃≃(([], withSpace  [|Contains I1 x |] ss))) (Translate_steps x) (Translate I1 I2)
+          (fun _ => ≃≃(([], withSpace  [|Contains I2 x|] (appSize [|id|] ss)))).
+Proof. unfold withSpace.
+  eapply Realise_TripleT.
+  - apply Translate_Realise with (X := X).
+  - apply Translate_Terminates with (X := X).
+  - intros tin [] tout H HEnc. cbn in *.
+    specialize (HEnc Fin0) as HEnc0; simpl_vector in *; cbn in *.
+    modpon H. tspec_solve.
+  - intros tin k HEnc Hk. cbn in *.
+    specialize (HEnc Fin0) as HEnc0. simpl_vector in *; cbn in *. unfold Translate_T. eauto.
+Qed.
+
+Lemma Translate_SpecT (sig : finType) (sigX X : Type)
+      (cX : codable sigX X) (I1 I2 : Retract sigX sig) (x : X) :
+  TripleT (≃≃([], [|Contains I1 x|])) (Translate_steps x) (Translate I1 I2)
+          (fun _ => ≃≃([], [|Contains I2 x|])).
+Proof. eapply TripleT_RemoveSpace. apply Translate_SpecT_size. Qed.
+
+Lemma Translate_Spec_size (sig : finType) (sigX X : Type)
+      (cX : codable sigX X) (I1 I2 : Retract sigX sig) (x : X) (ss : Vector.t nat 1) :
+  Triple (≃≃(([], withSpace  [|Contains I1 x |] ss))) (Translate I1 I2)
+         (fun _ => ≃≃(([], withSpace  [|Contains I2 x|] (appSize [|id|] ss)))).
+Proof. eapply TripleT_Triple. apply Translate_SpecT_size. Qed.
+
+Lemma Translate_Spec (sig : finType) (sigX X : Type)
+      (cX : codable sigX X) (I1 I2 : Retract sigX sig) (x : X) :
+  Triple (≃≃([], [|Contains I1 x|])) (Translate I1 I2)
+         (fun _ => ≃≃([], [|Contains I2 x|])).
+Proof. eapply TripleT_Triple. apply Translate_SpecT. Qed.
+
+Ltac hstep_Reset :=
+  lazymatch goal with
+  | [ |- TripleT ?P ?k (CopyValue _) ?Q ] => notypeclasses refine (CopyValue_SpecT_size _ _ _ _)
+  | [ |- TripleT ?P ?k (Reset _) ?Q ] => eapply @Reset_SpecT_space
+  | [ |- TripleT ?P ?k (ResetEmpty _) ?Q ] => eapply @ResetEmpty_SpecT_space
+  | [ |- TripleT ?P ?k (ResetEmpty1 _) ?Q ] => eapply @ResetEmpty1_SpecT_space
+  | [ |- TripleT ?P ?k (MoveValue _) ?Q ] => eapply @MoveValue_SpecT_size
+  | [ |- TripleT ?P ?k (Translate _ _) ?Q ] => eapply @Translate_SpecT_size
+  end.
+
+Smpl Add hstep_Reset : hstep_Spec.

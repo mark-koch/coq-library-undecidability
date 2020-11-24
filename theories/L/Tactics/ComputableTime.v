@@ -20,7 +20,7 @@ Fixpoint computesTime {t} (ty : TT t) :  forall (x:t) (xInt :term) (xTime :timeC
       forall (y : t1) yInt (yTime:timeComplexity t1),
         computesTime y yInt yTime
         -> let fyTime := fTime y yTime in
-          {v : term & (redLe (fst fyTime) (fInt yInt) v) * computesTime (f y) v (snd fyTime)}
+          {v : term & (redLe (fst fyTime) (app fInt yInt) v) * computesTime (f y) v (snd fyTime)}
   end%type.
 
 Arguments computesTime {_} _ _ _ _.
@@ -31,7 +31,6 @@ Class computableTime {X : Type} (ty : TT X) (x : X) evalTime: Type :=
     extTCorrect : computesTime ty x extT evalTime
   }.
 
-Existing Instance extT|4.
 
 Global Arguments computableTime {X} {ty} x.
 Global Arguments extT {X} {ty} x {_ computableTime} : simpl never.
@@ -39,6 +38,14 @@ Global Arguments extTCorrect {X} ty x {_ computableTime} : simpl never.
 Definition evalTime X ty x evalTime (computableTime : @computableTime X ty x evalTime):=evalTime.
 Global Arguments evalTime {X} {ty} x {evalTime computableTime}.
 
+Hint Extern 3 (@extracted ?t ?f) => let ty := constr:(_ : TT t) in notypeclasses refine (extT (ty:=ty) f) : typeclass_instances.
+Hint Mode computableTime + - + -: typeclass_instances. (* treat argument as input and force evar-freeness*)
+
+(** A Notation to allow inference of the TT parameter for function types. Coq checks that functions only appear at positions where functions are allowed before it inferes holes, so t complains that f "is a product while it is expected to be '@timeComplexity (forall _ : _, _) ?ty'". *)
+Notation "'computableTime'' f" := (@computableTime _ ltac:(let t:=type of f in refine (_ : TT t);exact _) f) (at level 0,only parsing).
+
+(* TODO in 8.11: use bidirectional hints Arguments computableTime _ _ _ & _. *)
+                                                                                                             
 Local Fixpoint notHigherOrder t (ty : TT t) :=
   match ty with
     TyArr _ _ (TyB _ _) ty2 => notHigherOrder ty2 
@@ -104,7 +111,7 @@ Proof.
 Defined.
 
 Lemma extTApp t1 t2 {tt1:TT t1} {tt2 : TT t2} (f: t1 -> t2) (x:t1) fT xT (Hf : computableTime f fT) (Hx : computableTime x xT) :
-  (extT f) (extT x) >(<= fst (evalTime f x (evalTime x))) extT (f x).
+  app (extT f) (extT x) >(<= fst (evalTime f x (evalTime x))) extT (f x).
 Proof.
   unfold extT.
   destruct Hf as [fInt [fP fInts]], Hx as [xInt xInts]. cbn.
@@ -125,7 +132,7 @@ Lemma computesTimeTyArr_helper t1 t2 (tt1 : TT t1) (tt2 : TT t2) f fInt time fT:
       (time y yT<= fst (fT y yT)) * 
   forall (yInt : term),
     computesTime tt1 y yInt yT
-    -> {v : term & evalLe (time y yT) (fInt yInt) v * (proc v -> computesTime tt2 (f y) v (snd (fT y yT)))})%type
+    -> {v : term & evalLe (time y yT) (app fInt yInt) v * (proc v -> computesTime tt2 (f y) v (snd (fT y yT)))})%type
 -> computesTime (tt1 ~> tt2) f fInt fT.
 Proof.
   intros H0 H. split. tauto.
@@ -165,16 +172,16 @@ Qed.
 Lemma computesTimeExpStep t1 t2 (tt1 : TT t1) (tt2 : TT t2) (f : t1 -> t2) (s:term) k k' fInt fT:
   k' = k -> evalIn k' s fInt -> closed s -> 
   (forall (y : t1) (yInt : term) yT, computesTime tt1 y yInt yT
-                                -> {v : term & computesTimeExp tt2 (f y) (s yInt) (fst (fT y yT) +k) v (snd (fT y yT))}%type) ->
+                                -> {v : term & computesTimeExp tt2 (f y) (app s yInt) (fst (fT y yT) +k) v (snd (fT y yT))}%type) ->
   computesTimeExp (tt1 ~> tt2) f s k fInt fT.
 
 Proof.
-  intros -> (R1&p1) ? H. split. split. eexists;split. 2:eassumption. omega. tauto. split. split. 2:tauto. rewrite <- R1. tauto. 
+  intros -> (R1&p1) ? H. split. split. eexists;split. 2:eassumption. lia. tauto. split. split. 2:tauto. rewrite <- R1. tauto. 
   intros y yInt yT yInted.
   edestruct (H y yInt yT yInted) as (v&H2&?).
   eexists v. split.
   edestruct (evalLe_trans_rev) as (H3&R3). exact H2. apply pow_step_congL. eassumption. reflexivity.
-  destruct fT. cbn in *. replace (n+k-k) with n in R3 by omega. apply R3. tauto. 
+  destruct fT. cbn in *. replace (n+k-k) with n in R3 by lia. apply R3. tauto. 
 Qed.
 
 
@@ -221,10 +228,38 @@ Proof.
 Qed.
     
 Definition cnst {X} (x:X):nat. exact 0. Qed.
- 
-  
 
-Definition callTime2 {X Y Z} `{registered X} `{registered Y} `{registered Z}
-           (fT : timeComplexity (X -> Y -> Z)) x y : nat :=
+Definition callTime X (fT : X -> unit -> nat * unit) x: nat := fst (fT x tt). 
+Arguments callTime / {_}.
+ 
+Definition callTime2 X Y
+           (fT : X -> unit -> nat * (Y -> unit -> nat * unit)) x y : nat :=
   let '(k,f):= fT x tt in k + fst (f y tt).
-Arguments callTime2 / {_ _ _ _ _ _}.
+Arguments callTime2 / {_ _}.
+
+
+Fixpoint timeComplexity_leq (t : Type) (tt : TT t) {struct tt} : timeComplexity t -> timeComplexity t -> Prop :=
+  match tt in (TT t) return timeComplexity t -> timeComplexity t -> Prop with
+  | ! t0 => fun _ _ => True
+  | @TyArr t1 t2 _ tt2 =>
+    fun f f' : timeComplexity (_ -> _) => forall (x:t1) xT, (fst (f x xT)) <= (fst (f' x xT)) /\ timeComplexity_leq (snd (f x xT)) (snd (f' x xT))
+  end.
+
+Lemma computesTime_timeLeq X (tt : TT X) x s fT fT':
+  timeComplexity_leq fT fT' -> computesTime tt x s fT -> computesTime tt x s fT'.
+Proof.
+  induction tt in x,s,fT,fT' |-*;intros eq.
+  -inv eq. tauto.
+  -cbn in eq|-*. intros [H1 H2]. split. 1:tauto.
+   intros y t yT ints.
+   specialize (H2 y t yT ints ) as (v&R&H2).
+   exists v. specialize (eq y yT) as (Hleq&?). split.
+   +rewrite <- Hleq. eassumption.
+   +eauto.
+Qed.
+
+Lemma computableTime_timeLeq X (tt : TT X) (x:X) fT fT':
+  timeComplexity_leq fT fT' -> computableTime x fT -> computableTime x fT'.
+Proof.
+  intros ? []. eexists. eapply computesTime_timeLeq. all:easy.
+Qed.

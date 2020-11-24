@@ -77,7 +77,7 @@ Proof. unfold addTR. generalize (proj1 (addTR_rec_correct [] x y)). simpl_list. 
 (* Full adder (computes "output bit" and "carry bit") *)
 Definition fullAdder (x y c : bool) : bool*bool := (xorb (xorb x y) c, (x && y) || (x && c) || (y && c)).
 
-Compute fullAdder false true true. (* (false, true) *)
+(* Compute fullAdder false true true. *) (* (false, true) *)
 
 
 
@@ -117,7 +117,7 @@ Definition add_baseCase (b carry : bool) (p : positive) :=
   if (b || carry) then (Pos.succ p) ~~ (negb (xorb b carry))
   else p ~~ (negb (xorb b carry)).
 
-Compute add_baseCase true false 1.
+(* Compute add_baseCase true false 1. *)
 
 (* This base case is complex enough that I write an auxilliary machine for this *)
 
@@ -303,7 +303,7 @@ Qed.
 (* We still assume that [p0<=p1] *)
 Definition Add' : pTM sigPos^+ unit 2 :=
   GoToLSB_start@[|Fin0|];; GoToLSB_start@[|Fin1|];;
-  (Add_Loop false)@[|Fin0; Fin1|];; (Move L)@[|Fin0|];; (Move L)@[|Fin1|].
+  (Add_Loop false)@[|Fin0; Fin1|];; (Move Lmove)@[|Fin0|];; (Move Lmove)@[|Fin1|].
 
 
 Definition Add'_Rel : pRel sigPos^+ unit 2 :=
@@ -324,7 +324,7 @@ Proof.
     - apply Add_Loop_Realise. }
   {
     intros tin ([], tout) H. intros p0 p1 Hp0 Hp1 HRight. TMSimp.
-    rename H into HGoToHSB, H0 into HGoToHSB', H1 into HLoopA, H3 into HLoopB, H4 into HLoopC.
+    rename H into HGoToHSB, H0 into HGoToHSB', H2 into HLoopA, H6 into HLoopB, H7 into HLoopC.
     modpon HGoToHSB. modpon HGoToHSB'.
     destruct p0; destruct p1; try nia.
     - modpon HLoopA; cbn in *.
@@ -372,7 +372,7 @@ Definition Add_Rel : pRel sigPos^+ unit 3 :=
     forall (p0 p1 : positive),
       tin[@Fin0] ≃ p0 ->
       tin[@Fin1] ≃ p1 ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ p0 /\
       tout[@Fin1] ≃ p1 /\
       tout[@Fin2] ≃ p0 + p1.
@@ -408,17 +408,16 @@ Definition Add_onto_Rel : pRel sigPos^+ unit 3 :=
     forall (p0 p1 : positive),
       tin[@Fin0] ≃ p0 ->
       tin[@Fin1] ≃ p1 ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ p0 /\
       tout[@Fin1] ≃ p0 + p1 /\
-      isRight tout[@Fin2].
+      isVoid tout[@Fin2].
 
 Lemma Add_onto_Realise : Add_onto ⊨ Add_onto_Rel.
 Proof.
   eapply Realise_monotone.
   { unfold Add_onto. TM_Correct.
-    - apply Add_Realise.
-    - apply MoveValue_Realise with (X := positive) (Y := positive). }
+    - apply Add_Realise. }
   {
     intros tin ([], tout) H. intros p0 p1 Hp0 Hp1 Hright.
     TMSimp. modpon H. modpon H0. auto.

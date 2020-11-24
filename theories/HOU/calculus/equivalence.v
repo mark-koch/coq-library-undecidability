@@ -1,5 +1,5 @@
 Set Implicit Arguments.
-Require Import Morphisms Omega FinFun.
+Require Import Morphisms Omega Lia FinFun.
 From Undecidability.HOU Require Export std.std calculus.syntax calculus.semantics calculus.confluence. 
 
 (** * Equational Theory *)
@@ -212,7 +212,7 @@ End Equivalence.
 Notation "s ≡ t" := (equiv step s t) (at level 70).  
 
 Hint Resolve equiv_neq_var_app equiv_neq_var_lambda equiv_neq_var_const
-     equiv_neq_const_app equiv_neq_const_lam equiv_neq_lambda_app.
+     equiv_neq_const_app equiv_neq_const_lam equiv_neq_lambda_app : core.
 
 
 

@@ -2,7 +2,9 @@ From Undecidability.L.Functions Require Export Eval.
 From Undecidability.L.Tactics Require Import Lbeta_nonrefl.
 (** * Definition of parallel or *)
 
+Section hoas. Import HOAS_Notations.
 Definition Por :term := Eval simpl in (λ s t , (λ n0,  !!(ext doesHaltIn) s n0 ) (!!mu (λ n ,!!(ext orb) (!!(ext doesHaltIn) s n) (!!(ext doesHaltIn) t n)))) .
+End hoas.
 
 Lemma Por_proc : proc Por.
 Proof.
@@ -10,6 +12,8 @@ Proof.
 Qed.
 
 Hint Resolve Por_proc : LProc.
+
+Import L_Notations.
 
 Lemma Por_correct_1a (s t:term) : converges s -> converges (Por (ext s) (ext t)).
 Proof.
@@ -36,7 +40,7 @@ Proof.
   intros [convs | convt]; eauto using Por_correct_1a, Por_correct_1b.
 Qed.
 
-Lemma Por_correct_2 s t : converges (Por (ext s) (ext t)) -> 
+Lemma Por_correct_2 (s t:term) : converges (Por (ext s) (ext t)) -> 
   exists (b:bool), Por (ext s) (ext t) == ext b.
 Proof.
   intros [v [R lv]]. unfold Por in R. LsimplHypo.

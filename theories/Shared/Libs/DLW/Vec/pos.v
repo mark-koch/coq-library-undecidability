@@ -7,11 +7,15 @@
 (*         CeCILL v2 FREE SOFTWARE LICENSE AGREEMENT          *)
 (**************************************************************)
 
-Require Import List Arith Omega.
+Require Import List Arith Lia.
+Require Fin.
 
-From Undecidability.Shared.Libs.DLW.Utils Require Import utils.
+From Undecidability.Shared.Libs.DLW.Utils 
+  Require Import utils.
 
 Set Implicit Arguments.
+
+(** @DLW: former definition
 
 Inductive pos : nat -> Set :=
   | pos_fst : forall n, pos (S n)
@@ -19,6 +23,12 @@ Inductive pos : nat -> Set :=
 
 Arguments pos_fst {n}.
 Arguments pos_nxt {n}.
+
+*)
+
+Notation pos := Fin.t.
+Notation pos_fst := Fin.F1.
+Notation pos_nxt := Fin.FS.
 
 Notation pos0  := (@pos_fst _).
 Notation pos1  := (pos_nxt pos0).
@@ -147,6 +157,17 @@ Tactic Notation "analyse" "pos" hyp(p) := analyse_pos p.
 Definition pos_O_any X : pos 0 -> X.
 Proof. intro p; invert pos p. Qed.
 
+Definition pos_eq_dec n (x y : pos n) : { x = y } + { x <> y }.
+Proof.
+  revert n x y.
+  induction x as [ x | n x IH ]; intros y; invert pos y.
+  1: left; trivial.
+  1,2: right; discriminate.
+  destruct (IH y) as [ | C ].
+  + left; subst; trivial.
+  + right; contradict C; revert C; apply pos_nxt_inj.
+Defined.
+
 Fixpoint pos_left n m (p : pos n) : pos (n+m) :=
   match p with
     | pos_fst   => pos_fst
@@ -242,42 +263,6 @@ Proof.
   induction n; simpl; auto.
   rewrite map_length; f_equal; auto.
 Qed.
- 
-Fact pos_reification X n (R : pos n -> X -> Prop) : (forall p, exists x, R p x) -> exists f, forall p, R p (f p).
-Proof.
-  revert R; induction n as [ | n IHn ]; intros R HR.
-  exists (pos_O_any X); intros p; invert pos p.
-  set (R' q x := R (pos_nxt q) x).
-  destruct (IHn R') as (f & Hf).
-  intros p; apply HR.
-  unfold R' in Hf.
-  destruct (HR pos_fst) as (x & Hx).
-  exists (fun p => match pos_S_inv p with inl _ => x | inr (exist _ q _) => f q end).
-  intros p; invert pos p; auto.
-Qed.
-
-Fact pos_reif_t X n (R : pos n -> X -> Prop) : (forall p, { x | R p x }) -> { f | forall p, R p (f p) }.
-Proof.
-  intros H.
-  exists (fun p => (proj1_sig (H p))).
-  intros; apply (proj2_sig (H p)).
-Qed.
-
-Section pos_eq_dec.
-
-  Definition pos_eq_dec n (x y : pos n) : { x = y } + { x <> y }.
-  Proof.
-    revert n x y.
-    induction x as [ x | n x IH ]; intros y; invert pos y.
-    left; trivial.
-    right; discriminate.
-    right; discriminate.
-    destruct (IH y) as [ | C ].
-    left; subst; trivial.
-    right; contradict C; revert C; apply pos_nxt_inj.
-  Defined.
-
-End pos_eq_dec.
 
 Section pos_map.
 
@@ -374,7 +359,7 @@ Section pos_nat.
   Fact pos2nat_nat2pos n i (H : i < n) : pos2nat (nat2pos H) = i.
   Proof.
     revert i H;
-    induction n as [ | n IHn ]; intros [ | i ] H; simpl; auto; try omega.
+    induction n as [ | n IHn ]; intros [ | i ] H; simpl; auto; try lia.
     f_equal.
     apply IHn.
   Qed.
@@ -402,16 +387,16 @@ Section pos_nat.
   Fixpoint pos_sub n (p : pos n) { struct p } : forall m, n < m -> pos m.
   Proof.
     destruct p as [ | n p ]; intros [ | m ] Hm.
-    exfalso; clear pos_sub; abstract omega.
+    exfalso; clear pos_sub; abstract lia.
     apply pos_fst.
-    exfalso; clear pos_sub; abstract omega.
+    exfalso; clear pos_sub; abstract lia.
     apply pos_nxt.
     apply (pos_sub n p), lt_S_n, Hm.
   Defined.
   
   Fact pos_sub2nat n p m Hm : pos2nat (@pos_sub n p m Hm) = pos2nat p.
   Proof.
-    revert m Hm; induction p as [ n | n p IH ]; intros [ | m ] Hm; try omega. 
+    revert m Hm; induction p as [ n | n p IH ]; intros [ | m ] Hm; try lia. 
     simpl; auto.
     simpl pos_sub; repeat rewrite pos2nat_nxt; f_equal; auto.
   Qed.
@@ -457,4 +442,3 @@ Section pos_prod.
   Qed.
   
 End pos_prod.
-

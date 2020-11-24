@@ -1,9 +1,13 @@
 From Undecidability.H10 Require Import H10 dio_single dio_logic.
-Require Import Undecidability.FOL.PCP.
-Require Import PslBase.FiniteTypes PslBase.FiniteTypes.Arbitrary.
+Require Import Undecidability.PCP.Util.PCP_facts.
+Require Import Undecidability.Shared.Libs.PSL.FiniteTypes Undecidability.Shared.Libs.PSL.FiniteTypes.Arbitrary.
+From Undecidability.Synthetic Require Export DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
 From Undecidability.L.Datatypes Require Import LNat Lists LProd.
 From Undecidability.L Require Import Tactics.LTactics Computability.MuRec Computability.Synthetic Tactics.GenEncode.
+From Undecidability.Shared.Libs.DLW.Vec Require Import pos.
+Import ListAutomationNotations.
 
+Require Import Nat Datatypes.
 
 (** * Diophantine Equations *)
 
@@ -13,7 +17,7 @@ Inductive poly : Set :=
   | poly_add : poly -> poly -> poly
   | poly_mul : poly -> poly -> poly.
 
-Run TemplateProgram (tmGenEncode "enc_poly" poly).
+MetaCoq Run (tmGenEncode "enc_poly" poly).
 Hint Resolve enc_poly_correct : Lrewrite.
 
 Instance term_poly_cnst: computable poly_cnst. extract constructor. Qed.
@@ -48,32 +52,31 @@ Fixpoint L_poly n : list (poly) :=
 Instance term_L_poly : computable L_poly. extract. Qed.
 
 Instance enum_poly :
-  enumT (poly) := {| L_T := L_poly |}.
+  list_enumerator__T L_poly poly.
 Proof.
-  - eauto.
-  - intros p. induction p.
-    + destruct (el_T n) as [m].
-      exists (1 + m). cbn. in_app 2. eauto.
-    + destruct (el_T n) as [m].
-      exists (1 + m). cbn. in_app 3. eauto.
-    + destruct IHp1 as [m1]. destruct IHp2 as [m2].
-      exists (1 + m1 + m2). cbn. in_app 4. in_collect (p1, p2); eapply cum_ge'; eauto; omega.
-    + destruct IHp1 as [m1]. destruct IHp2 as [m2].
-      exists (1 + m1 + m2). cbn. in_app 5. in_collect (p1, p2); eapply cum_ge'; eauto; omega.
+  intros p. induction p.
+  + destruct (el_T n) as [m].
+    exists (1 + m). cbn. in_app 2. in_collect n. exact H.
+  + destruct (el_T n) as [m].
+    exists (1 + m). cbn. in_app 3. eauto.
+  + destruct IHp1 as [m1]. destruct IHp2 as [m2].
+    exists (1 + m1 + m2). cbn. in_app 4. in_collect (p1, p2); eapply cum_ge'; eauto; lia.
+  + destruct IHp1 as [m1]. destruct IHp2 as [m2].
+    exists (1 + m1 + m2). cbn. in_app 5. in_collect (p1, p2); eapply cum_ge'; eauto; lia.
 Defined.
 
-Fixpoint conv n (p : dio_single.dio_polynomial (pos.pos n) Empty_set) : poly.
+Fixpoint conv n (p : dio_single.dio_polynomial (pos n) (pos 0)) : poly.
 Proof.
-  destruct p.
+  destruct p as [ | p | p | ].
   - exact (poly_cnst n0).
   - exact (poly_var (pos.pos2nat p)).
-  - inv e.
+  - invert pos p.
   - destruct d.
     + exact (poly_add (conv _ p1) (conv _ p2)).
     + exact (poly_mul (conv _ p1) (conv _ p2)).
 Defined.
 
-Fixpoint L_from (n : nat) : (pos.pos n -> nat) -> list nat.
+Fixpoint L_from (n : nat) : (pos n -> nat) -> list nat.
 Proof.
   intros phi. destruct n.
   - exact [].
@@ -83,11 +86,11 @@ Proof.
 Defined.
 
 
-Lemma L_nth n phi (p : pos.pos n) : nth (pos.pos2nat p) (L_from phi) 0 = phi p.
+Lemma L_nth n phi (p : pos n) : nth (pos2nat p) (L_from phi) 0 = phi p.
 Proof.
   induction n.
-  - inv p.
-  - cbn. pos.pos_inv p.
+  - invert pos p.
+  - cbn. invert pos p.
     + cbn. now rewrite pos.pos2nat_fst.
     + now rewrite pos.pos2nat_nxt, IHn.
 Qed.
@@ -97,28 +100,28 @@ Proof.
   induction p; cbn.
   - reflexivity.
   - now rewrite L_nth.
-  - destruct p.
+  - invert pos p.
   - destruct d; cbn; congruence.
 Qed.
 
 Lemma eval_L_from n p L :
-  eval (@conv n p) (L_from (fun n0 : pos.pos n => nth (pos.pos2nat n0) L 0)) = eval (conv p) L.
+  eval (@conv n p) (L_from (fun p : pos n => nth (pos2nat p) L 0)) = eval (conv p) L.
 Proof.
   induction p; cbn.
   - reflexivity.
   - revert L; induction n; intros; cbn.
-    + inv v.
-    + pos.pos_inv v.
-      * rewrite pos.pos2nat_fst. reflexivity.
-      * rewrite pos.pos2nat_nxt in *.
+    + invert pos v.
+    + invert pos v.
+      * rewrite pos2nat_fst. reflexivity.
+      * rewrite pos2nat_nxt in *.
         destruct L.
         -- cbn. clear. induction n.
-           ++ cbn. pos.pos_inv v.
-           ++ cbn. pos.pos_inv v. rewrite !pos.pos2nat_fst.
+           ++ cbn. invert pos v.
+           ++ cbn. invert pos v. rewrite !pos.pos2nat_fst.
               now rewrite pos.pos2nat_nxt.
               now rewrite pos.pos2nat_nxt.
         -- cbn. now rewrite <- IHn with (L := L).
-  - inv p.
+  - invert pos p.
   - destruct d; cbn; congruence.
 Qed.      
     
@@ -148,10 +151,16 @@ Proof.
   extract.
 Qed.
 
-Definition T_list_nat := @T_list nat _.
+Definition T_list_nat := @L_list nat opt_to_list.
+
+Instance computable_cumul {X} `{registered X} : computable (@cumul X).
+Proof.
+  extract.
+Qed.
 
 Instance term_T_list : computable T_list_nat.
 Proof.
+  unfold T_list_nat, L_list.
   change (computable
     (fix T_list (n : nat) : list (list nat) :=
        match n with
@@ -168,15 +177,15 @@ Proof.
   instantiate (1 := fun '( (p1,p2), L) => eval p1 L = eval p2 L).
   2:{ intros []. firstorder. }
   eapply L_enumerable_enum.
-  exists (fix L n := match n with 0 => [] | S n => L n ++ filter test_eq (list_prod (list_prod (L_T poly n) (L_T poly n)) (L_T (list nat) n)) end)%list.
+  exists (fix L n := match n with 0 => [] | S n => L n ++ filter test_eq (list_prod (list_prod (L_poly n) (L_poly n)) (T_list_nat  n)) end)%list.
   repeat split.
-  - cbn. change (T_list enumT_nat) with (T_list_nat). extract.
+  - extract.
   - eauto.
   - destruct x as [[p1 p2] L]. intros.
-    destruct (el_T p1) as [m1], (el_T p2) as [m2], (el_T L) as [m3].
+    destruct (enum_poly p1) as [m1], (enum_poly p2) as [m2], (enumerator__T_list opt_to_list _ L) as [m3].
     exists (1 + m1 + m2 + m3). in_app 2.
     fold plus. eapply in_filter_iff. split.
-    + rewrite !in_prod_iff. repeat split; eapply cum_ge'; try eassumption; eauto; omega.
+    + rewrite !in_prod_iff. repeat split; eapply cum_ge'; try eassumption; eauto; lia.
     + unfold test_eq. edestruct (Nat.eqb_spec (eval p1 L) (eval p2 L)); eauto.
   - destruct x as [[p1 p2] L]. intros [m].
     induction m.
@@ -223,4 +232,4 @@ Proof.
   - intros ( (p1, p2), (p1', p2')).
     destruct (poly_eqb_spec p1 p1'), (poly_eqb_spec p2 p2'); cbn; firstorder congruence.
 Qed.
-Print Assumptions eval_L_from.
+(* Print Assumptions eval_L_from. *)

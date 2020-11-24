@@ -1,4 +1,4 @@
-Require Import List Omega Morphisms.
+Require Import List Omega Lia Morphisms.
 From Undecidability.HOU Require Import std.std calculus.calculus.
 Import ListNotations. 
 
@@ -25,7 +25,7 @@ End UnificationDefinitions.
 
 Arguments uni _ : clear implicits.
 Arguments U _ : clear implicits.
-Hint Resolve @H1ᵤ @H2ᵤ.
+Hint Resolve H1ᵤ H2ᵤ : core.
 
 (** ** Normalisation *)
 

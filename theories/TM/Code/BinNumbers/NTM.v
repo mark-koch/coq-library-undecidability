@@ -5,18 +5,18 @@ From Undecidability Require Import BinNumbers.EncodeBinNumbers.
 From Undecidability Require Import Code.CaseSum. (* [CaseOption] *)
 
 From Undecidability Require Import ArithPrelim.
-Require Import BinNums.
+From Coq Require Import BinNums.
 
 Local Open Scope N_scope.
 
 
 (** ** Write a number *)
 
-Definition WriteNumber (n : N) : pTM sigN^+ unit 1 := WriteValue (encode n).
+Definition WriteNumber (n : N) : pTM sigN^+ unit 1 := WriteValue n.
 
 Definition WriteNumber_Rel (n : N) : pRel sigN^+ unit 1:=
   fun tin '(_, tout) =>
-    isRight tin[@Fin0] ->
+    isVoid tin[@Fin0] ->
     tout[@Fin0] ≃ n.
 
 Definition WriteNumber_steps (n : N) : nat := 2 * Encode_N_size n + 3.
@@ -27,7 +27,7 @@ Proof.
   { unfold WriteNumber. TM_Correct. }
   { setoid_rewrite Encode_N_hasSize. cbn. ring_simplify. reflexivity. }
   {
-    intros tin ([], tout) H. hnf in H. intros Hright. specialize H with (x := n). modpon H. auto.
+    intros tin ([], tout) H. hnf in H. intros Hright. modpon H. auto.
   }
 Qed.
 
@@ -38,7 +38,7 @@ Definition Constr_N0 : pTM sigN^+ unit 1 := WriteNumber 0.
 
 Definition Constr_N0_Rel : pRel sigN^+ unit 1:=
   fun tin '(_, tout) =>
-    isRight tin[@Fin0] ->
+    isVoid tin[@Fin0] ->
     tout[@Fin0] ≃ 0.
 
 Definition Constr_N0_steps : nat := Eval cbn in WriteNumber_steps 0.
@@ -120,10 +120,8 @@ Proof.
   {
     intros tin ([], tout) H. intros n Hn. destruct H as [H|H]; TMSimp.
     - modpon H. destruct n; cbn in *; auto.
-      modpon H0; simpl_surject.
-      { simpl_tape; simpl_surject. contains_ext. (* TODO: [simpl_tape] should be added to [simpl_surject] or [contains_ext]. *) }
-      simpl_tape in *; simpl_surject.
-      modpon H1; auto.
+      modpon H0;[].
+      modpon H1;[]. eauto.
     - modpon H. destruct n; cbn in *; auto.
   }
 Qed.
@@ -154,22 +152,20 @@ Proof.
   eapply Realise_monotone.
   { unfold Add'_N. TM_Correct.
     - apply Add'_Realise.
-    - apply CopyValue_Realise. }
+    }
   {
     intros tin ([], tout) H. intros x y Hx Hy Hle. destruct H as [H|H]; TMSimp.
     - modpon H. destruct x as [ | x]; cbn in *; auto.
       destruct H0; TMSimp.
       + modpon H0. destruct y as [ | y]; cbn in *; auto.
         specialize (H1 x y).
-        modpon H1.
-        { simpl_tape. simpl_surject. TMSimp. contains_ext. }
-        { simpl_tape. simpl_surject. contains_ext. }
+        modpon H1;[].
         simpl_tape in *; simpl_surject.
-        modpon H2. modpon H3.
+        modpon H3. modpon H4.
         split; eauto.
       + modpon H0. destruct y as [ | y]; cbn in *; auto.
         modpon H1.
-        specialize (H2 (N.pos x)). modpon H2.
+        specialize (H3 (N.pos x)). modpon H3.
         split; auto.
     - modpon H. destruct x as [ | x]; cbn in *; auto. modpon H0. auto.
   }
@@ -188,7 +184,7 @@ Definition Add_N_Rel : pRel sigN^+ unit 3 :=
     forall (x y : N),
       tin[@Fin0] ≃ x ->
       tin[@Fin1] ≃ y ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ x /\
       tout[@Fin1] ≃ y /\
       tout[@Fin2] ≃ x+y.
@@ -196,26 +192,23 @@ Definition Add_N_Rel : pRel sigN^+ unit 3 :=
 Lemma Add_N_Realise : Add_N ⊨ Add_N_Rel.
   eapply Realise_monotone.
   { unfold Add_N. TM_Correct.
-    - apply Add_Realise.
-    - apply CopyValue_Realise.
-    - apply CopyValue_Realise. }
+    - apply Add_Realise. }
   {
     intros tin ([], tout) H. intros x y Hx Hy Hright. destruct H as [H|H]; TMSimp.
     - modpon H. destruct x as [ | x]; cbn in *; auto.
       destruct H0; TMSimp.
       +
-        rename H0 into HCaseOption, H1 into HAdd, H2 into HSome0, H3 into HSome1, H4 into HSome2.
+        rename H0 into HCaseOption, H1 into HAdd, H3 into HSome0, H4 into HSome1, H6 into HSome2.
         modpon HCaseOption. destruct y as [ | y]; cbn in *; auto.
         specialize (HAdd x y). modpon HAdd; simpl_tape in *; simpl_surject; TMSimp; auto.
         modpon HSome0. modpon HSome1. modpon HSome2.
         repeat split; eauto.
       + modpon H0. destruct y as [ | y]; cbn in *; auto.
         modpon H1.
-        modpon H2.
-        specialize (H3 (Npos x)). modpon H3.
+        modpon H3. modpon H5.
         TMSimp.
         repeat split; auto.
-    - modpon H. destruct x as [ | x]; cbn in *; auto. modpon H0. modpon H1. auto.
+    - modpon H. destruct x as [ | x]; cbn in *; auto. modpon H0. modpon H2. auto.
   }
 Qed.
 
@@ -224,7 +217,7 @@ Qed.
 
 From Undecidability Require Import PosMultTM.
 
-Print N.mul.
+(* Print N.mul. *)
 
 Definition Mult_N : pTM sigN^+ unit 3 :=
   If (CaseN @[|Fin0|])
@@ -238,7 +231,7 @@ Definition Mult_N_Rel : pRel sigN^+ unit 3 :=
     forall (x y : N),
       tin[@Fin0] ≃ x ->
       tin[@Fin1] ≃ y ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ x /\
       tout[@Fin1] ≃ y /\
       tout[@Fin2] ≃ x*y.
@@ -260,7 +253,7 @@ Proof.
     intros tin ([], tout) H. intros x y Hx Hy Hright. destruct H as [H|H]; TMSimp.
     - modpon H. destruct x as [ | x]; cbn in *; auto. destruct H0 as [?|?]; TMSimp.
       + modpon H0. destruct y as [ | y]; cbn in *; auto. simpl_tape in *; simpl_surject. TMSimp.
-        modpon H1. modpon H2. modpon H2. modpon H3. modpon H4. repeat split; eauto.
+        modpon H1. modpon H3. modpon H4. repeat split; eauto.
       + modpon H0. destruct y as [ | y]; cbn in *; auto.
     - modpon H. destruct x as [ | x]; cbn in *; auto.
   }

@@ -7,161 +7,71 @@
 (*         CeCILL v2 FREE SOFTWARE LICENSE AGREEMENT          *)
 (**************************************************************)
 
-Require Import List Permutation Arith Omega.
+Require Import List Permutation Arith Lia.
 
-From Undecidability.Shared.Libs.DLW Require Import Utils.utils Vec.pos Vec.vec.
+From Undecidability.Shared.Libs.DLW 
+  Require Import utils pos vec.
+
+From Undecidability.ILL
+  Require Import ILL.
 
 Set Implicit Arguments.
 
-(** * Intuionistic Linear Logic *)
+Section obvious_links_between_fragments.
 
-Local Infix "~p" := (@Permutation _) (at level 70).
+  Notation "P ⇒ Q" := (forall Γ A, P Γ A -> Q Γ A) (at level 70).
 
-Definition ll_vars := nat.
+  Fact S_ill_restr_restr_wc : S_ill_restr ⇒ S_ill_restr_wc.
+  Proof.
+    induction 1.
+    all: try now constructor.
+    now constructor 3 with (Γ := Γ).
+  Qed.
 
-(** We only consider the fragment of ILL which
-   contains !, -o and & ... 
- 
-   ILL can be faithfully embedded into that fragment 
-   but this does not matter for undecidability 
-*)
+  Fact S_ill_full_wc : S_ill ⇒ S_ill_wc.
+  Proof.
+    induction 1.
+    all: try now constructor.
+    now constructor 3 with (Γ := Γ).
+  Qed.
 
-Inductive ll_conn := ll_with | ll_limp | ll_times | ll_plus.
-Inductive ll_cst := ll_one | ll_bot | ll_top.
+  Fact S_ill_restr_full : S_ill_restr ⇒ S_ill.
+  Proof.
+    induction 1.
+    all: try now constructor.
+    now constructor 2 with (Γ := Γ).
+  Qed.
 
-Inductive ll_form : Set :=
-  | ll_var  : ll_vars -> ll_form
-  | ll_zero : ll_cst  -> ll_form
-  | ll_ban  : ll_form -> ll_form
-  | ll_bin  : ll_conn -> ll_form -> ll_form -> ll_form.
+  Fact S_ill_restr_full_wc : S_ill_restr_wc ⇒ S_ill_wc.
+  Proof.
+    induction 1.
+    all: try now constructor.
+    + now constructor 2 with A.
+    + now constructor 3 with (Γ := Γ).
+  Qed.
 
-(* Symbols for cut&paste ⟙   ⟘   𝝐  ﹠ ⊗  ⊕  ⊸  ❗   ‼  ∅  ⊢ *)
+End obvious_links_between_fragments.
 
-Notation "⟙" := (ll_zero ll_top).
-Notation "⟘" := (ll_zero ll_bot).
-Notation 𝝐 := (ll_zero ll_one).
+Local Notation "Γ '⊢r' A" := (S_ill_restr Γ A) (at level 70, no associativity).
+Local Notation "Γ '⊢' A" := (S_ill_wc Γ A) (at level 70, no associativity).
 
-Infix "&" := (ll_bin ll_with) (at level 50, only parsing).
-Infix "﹠" := (ll_bin ll_with) (at level 50).
-Infix "⊗" := (ll_bin ll_times) (at level 50).
-Infix "⊕" := (ll_bin ll_plus) (at level 50).
-Infix "-o" := (ll_bin ll_limp) (at level 51, only parsing, right associativity).
-Infix "⊸" := (ll_bin ll_limp) (at level 51, right associativity).
+Fact S_ill_restr_weak Γ Δ B : Δ ⊢r B -> ‼Γ++Δ ⊢r B.
+Proof. intro; induction Γ; simpl; auto; apply in_ill1_weak; auto. Qed.
 
-Notation "'!' x" := (ll_ban x) (at level 52, only parsing).
-Notation "❗ x" := (ll_ban x) (at level 52).
+Fact S_ill_wc_weak Γ Δ B : Δ ⊢ B -> ‼Γ++Δ ⊢ B.
+Proof. intro; induction Γ; simpl; auto; apply in_ill4_weak; auto. Qed.
 
-Notation "£" := ll_var.
-
-Definition ll_lbang := map (fun x => !x).
-
-Notation "'!l' x" := (ll_lbang x) (at level 60, only parsing).
-Notation "‼ x" := (ll_lbang x) (at level 60).
-
-Notation "∅" := nil (only parsing).
-
-Reserved Notation "l '⊢' x" (at level 70, no associativity).
-
-Inductive S_ill : list ll_form -> ll_form -> Prop :=
-
-  (* These are the SILL rules in the paper *)
-
-  | in_llp_ax     : forall A,                         A::∅ ⊢ A
-
-  | in_llp_perm   : forall Γ Δ A,              Γ ~p Δ     ->   Γ ⊢ A 
-                                           (*-----------------------------*)
-                                      ->                 Δ ⊢ A
-
-  | in_llp_limp_l : forall Γ Δ A B C,          Γ ⊢ A      ->   B::Δ ⊢ C
-                                           (*-----------------------------*)    
-                                      ->           A ⊸ B::Γ++Δ ⊢ C
-
-  | in_llp_limp_r : forall Γ A B,                    A::Γ ⊢ B
-                                           (*-----------------------------*)
-                                      ->            Γ ⊢ A ⊸ B
-
-  | in_llp_with_l1 : forall Γ A B C,                  A::Γ ⊢ C 
-                                           (*-----------------------------*)
-                                      ->           A﹠B::Γ ⊢ C
-
-  | in_llp_with_l2 : forall Γ A B C,                  B::Γ ⊢ C 
-                                           (*-----------------------------*)
-                                      ->           A﹠B::Γ ⊢ C
- 
-  | in_llp_with_r : forall Γ A B,               Γ ⊢ A     ->   Γ ⊢ B
-                                           (*-----------------------------*)
-                                      ->              Γ ⊢ A﹠B
-
-  | in_llp_bang_l : forall Γ A B,                    A::Γ ⊢ B
-                                           (*-----------------------------*)
-                                      ->            ❗ A::Γ ⊢ B
-
-  | in_llp_bang_r : forall Γ A,                       ‼Γ ⊢ A
-                                           (*-----------------------------*)
-                                      ->              ‼Γ ⊢ ❗ A
-
-  | in_llp_weak : forall Γ A B,                        Γ ⊢ B
-                                           (*-----------------------------*)
-                                      ->           ❗ A::Γ ⊢ B
-
-  | in_llp_cntr : forall Γ A B,                    ❗ A::❗ A::Γ ⊢ B
-                                           (*-----------------------------*)
-                                      ->             ❗ A::Γ ⊢ B
-
-  (* These are the other rule for a complete sequent calculus for the whole ILL *)
-
-  | in_llp_cut : forall Γ Δ A B,                 Γ ⊢ A    ->   A::Δ ⊢ B
-                                           (*-----------------------------*)    
-                                      ->              Γ++Δ ⊢ B
-
-  | in_llp_times_l : forall Γ A B C,               A::B::Γ ⊢ C 
-                                           (*-----------------------------*)
-                                      ->            A⊗B::Γ ⊢ C
- 
-  | in_llp_times_r : forall Γ Δ A B,             Γ ⊢ A    ->   Δ ⊢ B
-                                           (*-----------------------------*)
-                                      ->              Γ++Δ ⊢ A⊗B
-
-  | in_llp_plus_l :  forall Γ A B C,            A::Γ ⊢ C  ->  B::Γ ⊢ C 
-                                           (*-----------------------------*)
-                                      ->            A⊕B::Γ ⊢ C
-
-  | in_llp_plus_r1 : forall Γ A B,                    Γ ⊢ A  
-                                           (*-----------------------------*)
-                                      ->              Γ ⊢ A⊕B
-
-  | in_llp_plus_r2 : forall Γ A B,                    Γ ⊢ B  
-                                           (*-----------------------------*)
-                                      ->              Γ ⊢ A⊕B
-
-  | in_llp_bot_l : forall Γ A,                     ⟘::Γ ⊢ A
-
-  | in_llp_top_r : forall Γ,                          Γ ⊢ ⟙
-
-  | in_llp_unit_l : forall Γ A,                       Γ ⊢ A  
-                                           (*-----------------------------*)
-                                      ->           𝝐 ::Γ ⊢ A
-
-  | in_llp_unit_r :                                   ∅ ⊢ 𝝐
-
-where "l ⊢ x" := (S_ill l x).
-
-Definition ILL_PROVABILITY (c : (list ll_form) * ll_form) := let (Ga,A) := c in Ga ⊢ A. 
-
-Fact S_ill_weak Γ Δ B : Δ ⊢ B -> ‼Γ++Δ ⊢ B.
-Proof. intro; induction Γ; simpl; auto; apply in_llp_weak; auto. Qed.
-
-Fact S_ill_cntr Γ Δ B : ‼Γ++‼Γ++Δ ⊢ B -> ‼Γ++ Δ ⊢ B.
+Fact S_ill_restr_cntr Γ Δ B : ‼Γ++‼Γ++Δ ⊢r B -> ‼Γ++ Δ ⊢r B.
 Proof.
   revert Γ Δ; intros Ga.
   induction Ga as [ | A Ga IH ]; simpl; auto; intros De.
   intros H.
-  apply in_llp_cntr.
-  apply in_llp_perm with (map ll_ban Ga ++ (!A::!A::De)).
+  apply in_ill1_cntr.
+  apply in_ill1_perm with (‼Ga ++ (!A::!A::De)).
   + apply Permutation_sym.
     do 2 apply Permutation_cons_app; auto.
   + apply IH.
-    revert H; apply in_llp_perm.
+    revert H; apply in_ill1_perm.
     rewrite app_assoc.
     apply Permutation_cons_app.
     rewrite <- app_assoc.
@@ -169,37 +79,77 @@ Proof.
     apply Permutation_cons_app; auto.
 Qed.
 
-Theorem S_ill_weak_cntr Σ Γ A B : In A Σ -> ‼Σ++Γ ⊢ B <-> ❗ A::‼Σ++Γ ⊢ B.
+Fact S_ill_wc_cntr Γ Δ B : ‼Γ++‼Γ++Δ ⊢ B -> ‼Γ++ Δ ⊢ B.
+Proof.
+  revert Γ Δ; intros Ga.
+  induction Ga as [ | A Ga IH ]; simpl; auto; intros De.
+  intros H.
+  apply in_ill4_cntr.
+  apply in_ill4_perm with (‼Ga ++ (!A::!A::De)).
+  + apply Permutation_sym.
+    do 2 apply Permutation_cons_app; auto.
+  + apply IH.
+    revert H; apply in_ill4_perm.
+    rewrite app_assoc.
+    apply Permutation_cons_app.
+    rewrite <- app_assoc.
+    apply Permutation_app; auto.
+    apply Permutation_cons_app; auto.
+Qed.
+
+Theorem S_ill_restr_weak_cntr Σ Γ A B : In A Σ -> ‼Σ++Γ ⊢r B <-> !A::‼Σ++Γ ⊢r B.
 Proof.
   revert Σ Γ; intros Si Ga.
   intros H.
   apply In_perm in H.
   destruct H as (Si' & H).
   split.
-  + apply in_llp_weak.
+  + apply in_ill1_weak.
   + intros H1.
-    apply in_llp_perm with (‼(A :: Si') ++ Ga).
+    apply in_ill1_perm with (‼(A :: Si') ++ Ga).
     * apply Permutation_app; auto.
       apply Permutation_map; auto.
-    * simpl; apply in_llp_cntr.
-      revert H1; apply in_llp_perm.
+    * simpl; apply in_ill1_cntr.
+      revert H1; apply in_ill1_perm.
       simpl; apply Permutation_cons; auto.
-      change (❗ A::‼Si'++Ga) with (‼(A::Si')++Ga).
+      change (!A::‼Si'++Ga) with (‼(A::Si')++Ga).
       apply Permutation_app; auto.
       apply Permutation_map, Permutation_sym; auto.
 Qed.
 
+Theorem S_ill_wc_weak_cntr Σ Γ A B : In A Σ -> ‼Σ++Γ ⊢ B <-> !A::‼Σ++Γ ⊢ B.
+Proof.
+  revert Σ Γ; intros Si Ga.
+  intros H.
+  apply In_perm in H.
+  destruct H as (Si' & H).
+  split.
+  + apply in_ill4_weak.
+  + intros H1.
+    apply in_ill4_perm with (‼(A :: Si') ++ Ga).
+    * apply Permutation_app; auto.
+      apply Permutation_map; auto.
+    * simpl; apply in_ill4_cntr.
+      revert H1; apply in_ill4_perm.
+      simpl; apply Permutation_cons; auto.
+      change (!A::‼Si'++Ga) with (‼(A::Si')++Ga).
+      apply Permutation_app; auto.
+      apply Permutation_map, Permutation_sym; auto.
+Qed.
+
+(* We prove soundness for the stronger system *)
+
 Section trivial_phase_semantics.
 
-  Variables (n : nat) (s : ll_vars -> vec nat n -> Prop).
+  Variables (n : nat) (s : ill_vars -> vec nat n -> Prop).
 
   Reserved Notation "'⟦' A '⟧'" (at level 65).
 
-  Definition ll_tps_imp (X Y : _ -> Prop) (v : vec _ n) := forall x, X x -> Y (vec_plus x v).
-  Definition ll_tps_mult (X Y : _ -> Prop) (x : vec _ n) := exists a b, x = vec_plus a b /\ X a /\ Y b. 
+  Definition ill_tps_imp (X Y : _ -> Prop) (v : vec _ n) := forall x, X x -> Y (vec_plus x v).
+  Definition ill_tps_mult (X Y : _ -> Prop) (x : vec _ n) := exists a b, x = vec_plus a b /\ X a /\ Y b. 
   
-  Infix "**" := (ll_tps_mult) (at level 65, right associativity).
-  Infix "-*" := (ll_tps_imp) (at level 65, right associativity).
+  Infix "**" := ill_tps_mult (at level 65, right associativity).
+  Infix "-*" := ill_tps_imp (at level 65, right associativity).
 
   Fact ll_tps_mult_mono (X1 X2 Y1 Y2 : _ -> Prop) : 
              (forall x, X1 x -> X2 x)
@@ -210,32 +160,30 @@ Section trivial_phase_semantics.
     exists a, b; auto.
   Qed.
 
-  (* Symbols for cut&paste ⟙   ⟘   𝝐  ﹠ ⊗  ⊕  ⊸  ❗   ‼  ∅  ⊢ ⟦ ⟧ Γ Δ Σ*)
-
-  Fixpoint ll_tps A x : Prop :=
+  Fixpoint ill_tps A x : Prop :=
     match A with
       | £ X     => s X x
-      | A ﹠ B  => ⟦A⟧ x /\ ⟦B⟧ x
-      | ❗ A     => ⟦A⟧ x /\ x = vec_zero
-      | A ⊸ B  => (⟦A⟧ -* ⟦B⟧) x
-      | A ⊗ B  => (⟦A⟧ ** ⟦B⟧) x
-      | A ⊕ B  => ⟦A⟧ x \/ ⟦B⟧ x
-      | ⟘             => False
-      | ⟙             => True
-      | 𝝐              => x = vec_zero
+      | A & B   => ⟦A⟧ x /\ ⟦B⟧ x
+      | !A      => ⟦A⟧ x /\ x = vec_zero
+      | A ⊸ B   => (⟦A⟧ -* ⟦B⟧) x
+      | A ⊗ B   => (⟦A⟧ ** ⟦B⟧) x
+      | A ⊕ B   => ⟦A⟧ x \/ ⟦B⟧ x
+      | ⟘              => False
+      | ⟙              => True
+      | 𝝐               => x = vec_zero
     end
-  where "⟦ A ⟧" := (ll_tps A).
+  where "⟦ A ⟧" := (ill_tps A).
 
   Reserved Notation "'[[' Γ ']]'" (at level 0).
 
-  Fixpoint ll_tps_list Γ :=
+  Fixpoint ill_tps_list Γ :=
     match Γ with
       | ∅    => eq vec_zero
       | A::Γ => ⟦A⟧ ** [[Γ]]
     end
-  where "[[ Γ ]]" := (ll_tps_list Γ).
+  where "[[ Γ ]]" := (ill_tps_list Γ).
 
-  Fact ll_tps_app Γ Δ x : [[Γ++Δ]] x <-> ([[Γ]]**[[Δ]]) x.
+  Fact ill_tps_app Γ Δ x : [[Γ++Δ]] x <-> ([[Γ]]**[[Δ]]) x.
   Proof.
     revert Γ Δ x; intros Ga De.
     induction Ga as [ | A Ga IH ]; intros x; simpl; split; intros Hx.
@@ -257,7 +205,7 @@ Section trivial_phase_semantics.
         exists g, d; auto.
   Qed.
 
-  Fact ll_tps_lbang Γ x : [[‼Γ]] x <-> [[Γ]] x /\ x = vec_zero.
+  Fact ill_tps_lbang Γ x : [[‼Γ]] x <-> [[Γ]] x /\ x = vec_zero.
   Proof.
     revert Γ x; intros Ga.
     induction Ga as [ | A Ga IH ]; intros x.
@@ -279,7 +227,7 @@ Section trivial_phase_semantics.
         apply IH; auto.
   Qed.
 
-  Fact ll_tps_list_bang_zero Γ : [[‼Γ]] vec_zero <-> forall A, In A Γ -> ⟦A⟧ vec_zero.
+  Fact ill_tps_list_bang_zero Γ : [[‼Γ]] vec_zero <-> forall A, In A Γ -> ⟦A⟧ vec_zero.
   Proof.
     induction Γ as [ | A Ga IH ].
     + split.
@@ -301,7 +249,7 @@ Section trivial_phase_semantics.
 
   (* Symbols for cut&paste ⟙   ⟘   𝝐  ﹠ ⊗  ⊕  ⊸  ❗   ‼  ∅  ⊢ ⟦ ⟧ Γ Δ Σ*)
  
-  Fact ll_tps_perm Γ Δ : Γ ~p Δ -> forall x, [[Γ]] x -> [[Δ]] x.
+  Fact ill_tps_perm Γ Δ : Γ ~p Δ -> forall x, [[Γ]] x -> [[Δ]] x.
   Proof.
     induction 1 as [ | A Ga De H IH | A B Ga | ]; simpl; auto.
     + intros x (a & b & H1 & H2 & H3).
@@ -313,27 +261,27 @@ Section trivial_phase_semantics.
         exists a, d; auto.
   Qed.
   
-  Definition ll_sequent_tps Γ A := [[Γ]] -* ⟦A⟧.
+  Definition ill_sequent_tps Γ A := [[Γ]] -* ⟦A⟧.
 
-  Notation "'[<' Γ '|-' A '>]'" := (ll_sequent_tps Γ A).
+  Notation "'[<' Γ '|-' A '>]'" := (ill_sequent_tps Γ A).
 
-  Fact ll_sequent_tps_mono Γ A B :
+  Fact ill_sequent_tps_mono Γ A B :
      (forall x, ⟦A⟧ x -> ⟦B⟧ x) -> forall x, [< Γ |- A >] x -> [< Γ |- B >] x.
   Proof.
-    intros H x; simpl; unfold ll_sequent_tps.
+    intros H x; simpl; unfold ill_sequent_tps.
     intros H1 a H2.
     apply H, H1; auto.
   Qed.
 
-  Fact ll_perm_tps Γ Δ : Γ ~p Δ -> forall x A, [< Γ |- A >] x -> [< Δ |- A >] x.
+  Fact ill_perm_tps Γ Δ : Γ ~p Δ -> forall x A, [< Γ |- A >] x -> [< Δ |- A >] x.
   Proof.
-    intros H1 x B; unfold ll_sequent_tps.
+    intros H1 x B; unfold ill_sequent_tps.
     intros H2 a H3.
     apply H2; revert H3. 
-    apply ll_tps_perm, Permutation_sym; auto.
+    apply ill_tps_perm, Permutation_sym; auto.
   Qed.
 
-  Fact ll_sequent_tps_eq  Γ A : [< Γ |- A >] vec_zero <-> forall x, [[Γ]] x -> ⟦A⟧ x.
+  Fact ill_sequent_tps_eq  Γ A : [< Γ |- A >] vec_zero <-> forall x, [[Γ]] x -> ⟦A⟧ x.
   Proof.
     split.
     * intros H x Hx.
@@ -343,40 +291,50 @@ Section trivial_phase_semantics.
       rewrite vec_plus_comm, vec_zero_plus; auto.
   Qed.
 
-  Theorem ll_tps_sound Γ A : Γ ⊢ A -> [< Γ |- A >] vec_zero.
+  Theorem ill_tps_sound Γ A : Γ ⊢ A -> [< Γ |- A >] vec_zero.
   Proof.
     induction 1 as [ A 
-                   | Ga De A H1 H2 IH2
-                   | Ga De A B C H1 IH1 H2 IH2
-                   | Ga A B H1 IH1
-                   | Ga A B C H1 IH1
-                   | Ga A B C H1 IH1
-                   | Ga A B H1 IH1 H2 IH2
-                   | Ga A B H1 IH1 
-                   | Ga A H1 IH1
-                   | Ga A B H1 IH1
-                   | Ga A B H1 IH1
-
-                   | Ga De A B H1 IH1 H2 IH2
-                   | Ga A B C H1 IH1
-                   | Ga De A B H1 IH1 H2 IH2
-                   | Ga A B C H1 IH1 H2 IH2
-                   | Ga A B H1 IH1
-                   | Ga A B H1 IH1
-                   | Ga A
-                   | Ga
-                   | Ga A H1 IH1
+                   | Γ Δ A B H1 IH1 H2 IH2
+                   | Γ Δ A H1 H2 IH2
+                   | Γ Δ A B C H1 IH1 H2 IH2
+                   | Γ A B H1 IH1
+                   | Γ A B C H1 IH1
+                   | Γ A B C H1 IH1
+                   | Γ A B H1 IH1 H2 IH2
+                   | Γ A B H1 IH1 
+                   | Γ A H1 IH1
+                   | Γ A B H1 IH1
+                   | Γ A B H1 IH1
+                   | Γ A B C H1 IH1
+                   | Γ Δ A B H1 IH1 H2 IH2
+                   | Γ A B C H1 IH1 H2 IH2
+                   | Γ A B H1 IH1
+                   | Γ A B H1 IH1
+                   | Γ A
+                   | Γ
+                   | Γ A H1 IH1
                    |
-                   ]; unfold ll_sequent_tps in * |- *.
+                   ]; unfold ill_sequent_tps in * |- *.
 
     + intros x; simpl; intros (a & b & H1 & H2 & H3); subst; eq goal H2.
       f_equal; do 2 rewrite vec_plus_comm, vec_zero_plus; auto.
 
-    + revert IH2; apply ll_perm_tps; auto.
+    (* Cut Rule *)
+ 
+    + intros x Hx.
+      rewrite ill_tps_app in Hx.
+      apply IH2.
+      destruct Hx as (a & b & G1 & G2 & G3); subst.
+      exists a, b; split; auto.
+      split; auto.
+      rewrite <- vec_zero_plus, vec_plus_comm.
+      apply IH1; auto.
+
+    + revert IH2; apply ill_perm_tps; auto.
 
     + intros x (y & z & H3 & H4 & H5); simpl.
       apply IH2.
-      apply ll_tps_app in H5.
+      apply ill_tps_app in H5.
       destruct H5 as (g & d & H5 & H6 & H7).
       simpl in H4.
       apply IH1, H4 in H6.
@@ -387,7 +345,7 @@ Section trivial_phase_semantics.
     + simpl; intros y Hy a Ha.
       rewrite vec_plus_assoc.
       apply IH1.
-      exists a, y; repeat split; auto; omega.
+      exists a, y; repeat split; auto; lia.
 
     + intros x (a & b & H2 & H3 & H4); apply IH1.
       exists a, b; repeat split; auto; apply H3.
@@ -406,7 +364,7 @@ Section trivial_phase_semantics.
     + intros x Hx; split.
       apply IH1; auto.
       rew vec.
-      apply ll_tps_lbang in Hx; tauto.
+      apply ill_tps_lbang in Hx; tauto.
 
     + intros x (a & g & H2 & H3 & H4).
       apply IH1.
@@ -422,17 +380,6 @@ Section trivial_phase_semantics.
       apply proj2 in H3.
       subst; rew vec; auto.
 
-    (* Cut Rule *)
- 
-    + intros x Hx.
-      rewrite ll_tps_app in Hx.
-      apply IH2.
-      destruct Hx as (a & b & G1 & G2 & G3); subst.
-      exists a, b; split; auto.
-      split; auto.
-      rewrite <- vec_zero_plus, vec_plus_comm.
-      apply IH1; auto.
-
     (* ⊗ left *)
 
     + intros x Hx.
@@ -445,7 +392,7 @@ Section trivial_phase_semantics.
     (* ⊗ right *)
 
     + intros x Hx.
-      apply ll_tps_app in Hx.
+      apply ill_tps_app in Hx.
       destruct Hx as (a & b & ? & H3 & H4); subst.
       exists a, b; split.
       * rewrite vec_plus_comm, vec_zero_plus; auto.

@@ -27,23 +27,23 @@ Fixpoint mult_TR_cont (a : positive) (x y : positive) {struct x} : positive :=
 
 Definition mult_TR (x y : positive) : positive := mult_TR_cont (shift_left y (pos_size x)) x y.
 
-Check eq_refl : let x := 13 in let y := 3 in mult_TR x y = x * y.
-Check eq_refl : let x := 5 in let y := 1 in mult_TR x y = x * y.
-Check eq_refl : let x := 4234 in let y := 2132 in mult_TR x y = x * y.
-Check eq_refl : let x := 43 in let y := 23 in mult_TR x y = x * y.
-Check eq_refl : let x := 43 in let y := 24 in mult_TR x y = x * y.
+(* Check eq_refl : let x := 13 in let y := 3 in mult_TR x y = x * y. *)
+(* Check eq_refl : let x := 5 in let y := 1 in mult_TR x y = x * y. *)
+(* Check eq_refl : let x := 4234 in let y := 2132 in mult_TR x y = x * y. *)
+(* Check eq_refl : let x := 43 in let y := 23 in mult_TR x y = x * y. *)
+(* Check eq_refl : let x := 43 in let y := 24 in mult_TR x y = x * y. *)
 (* All test passed! *)
 
 
 (* (* NB: Haskell extraction is fun! *)
-From Coq Require Extraction.
+From Coq From Undecidability Require Extraction.
 Extraction Language Haskell.
 Recursive Extraction mult_TR Pos.mul.
 *)
 
 
-Compute eq_refl: let a := 3 in let x := 4 in let y := 5 in mult_TR_cont (a~0) x (y~0) = (mult_TR_cont a x y)~0.
-Compute eq_refl: let a := 8 in let x := 232 in let y := 123 in mult_TR_cont (a~0) x (y~0) = (mult_TR_cont a x y)~0.
+(* Compute eq_refl: let a := 3 in let x := 4 in let y := 5 in mult_TR_cont (a~0) x (y~0) = (mult_TR_cont a x y)~0. *)
+(* Compute eq_refl: let a := 8 in let x := 232 in let y := 123 in mult_TR_cont (a~0) x (y~0) = (mult_TR_cont a x y)~0. *)
 
 Lemma mult_TR_cont_shift (a x y : positive) :
   mult_TR_cont (a~0) x (y~0) = (mult_TR_cont a x y)~0.
@@ -112,11 +112,11 @@ Proof.
     - apply ShiftLeft_Realise. }
   {
     intros tin (yout, tout) H. TMSimp.
-    rename H into HReadSymA, H1 into HReadSymB, H0 into HSwitch. split.
+    rename H into HReadSymA, H2 into HReadSymB, H0 into HSwitch. split.
     - intros. modpon HReadSymA. destruct ymid; cbn in *; auto.
       destruct b, bx; cbn in *; TMSimp; auto.
-      + modpon H5. modpon H6. modpon H7. repeat split; eauto. contains_ext. f_equal. nia.
-      + modpon H5. modpon H6. repeat split; eauto.
+      + modpon H7. modpon H6. modpon H9. repeat split; eauto. contains_ext. f_equal. nia.
+      + modpon H6. modpon H7. repeat split; eauto.
     - intros. modpon HReadSymB. destruct_tapes; TMSimp. repeat split; auto.
   }
 Qed.
@@ -229,7 +229,7 @@ Definition Mult_Rel : pRel sigPos^+ unit 3 :=
     forall (x y : positive),
       tin[@Fin0] ≃ x ->
       tin[@Fin1] ≃ y ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ x /\
       tout[@Fin1] ≃ y /\
       tout[@Fin2] ≃ x*y.
@@ -240,13 +240,13 @@ Definition Mult : pTM sigPos^+ unit 3 :=
   ShiftLeft_num @[|Fin0; Fin2|];;
   GoToLSB_start @[|Fin0|];;
   Mult_Loop;;
-  Move L @[|Fin0|];;
+  Move Lmove @[|Fin0|];;
   ShiftRight_num @[|Fin0; Fin1|].
 
 
 Lemma pos_size_shift_left (p : positive) (n : nat) :
   (pos_size (shift_left p n) = pos_size p + n) % nat.
-Proof. revert p. induction n; intros; cbn in *; auto. rewrite IHn. cbn. omega. Qed.
+Proof. revert p. induction n; intros; cbn in *; auto. rewrite IHn. cbn. lia. Qed.
 
 
 Local Arguments mult_TR_cont : simpl never.
@@ -255,14 +255,13 @@ Lemma Mult_Realise : Mult ⊨ Mult_Rel.
 Proof.
   eapply Realise_monotone.
   { unfold Mult. TM_Correct.
-    - apply CopyValue_Realise with (X := positive).
     - apply ShiftLeft_num_Realise.
     - apply GoToLSB_start_Realise.
     - apply Mult_Loop_Realise.
     - apply ShiftRight_num_Realise. }
   {
     intros tin ([], tout) H. hnf; intros x y Hx Hy Hright. TMSimp.
-    rename H into HCopyValue, H0 into HShiftLeft, H1 into HGoToLSB, H2 into HLoopA, H4 into HLoopB, H5 into HShiftRight.
+    rename H into HCopyValue, H0 into HShiftLeft, H2 into HGoToLSB, H4 into HLoopA, H7 into HLoopB, H8 into HShiftRight.
     modpon HCopyValue. modpon HShiftLeft. modpon HGoToLSB.
     destruct x; cbn -[shift_left shift_right mult_TR_cont] in *.
     - modpon HLoopA; cbn -[shift_left shift_right mult_TR_cont]in *.
@@ -287,6 +286,6 @@ Proof.
   }
 Qed.
 
-Print Assumptions Mult_Realise.
+(* Print Assumptions Mult_Realise. *)
 
 

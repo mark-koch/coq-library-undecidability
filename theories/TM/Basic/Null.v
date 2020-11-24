@@ -1,4 +1,4 @@
-From Undecidability Require Import TM.Prelim TM.TM.
+From Undecidability Require Import TM.Util.Prelim TM.Util.TM_facts.
 
 (** * 0-tape Turing machine that does nothing. *)
 
@@ -6,7 +6,7 @@ Section Mono_Nop.
 
   Variable sig : finType.
 
-  Definition NullTM : mTM sig 0 :=
+  Definition NullTM : TM sig 0 :=
     {|
       trans := fun '(q, s) => (q, Vector.nil _);
       start := tt;
@@ -31,7 +31,7 @@ Arguments Null_Rel { sig } x y / : rename.
 (** ** Tactic Support *)
 
 Ltac smpl_TM_Null :=
-  lazymatch goal with
+  once lazymatch goal with
   | [ |- Null ⊨ _] => eapply RealiseIn_Realise; eapply Null_Sem
   | [ |- Null ⊨c(_) _] => eapply Null_Sem
   | [ |- projT1 (Null) ↓ _] => eapply RealiseIn_TerminatesIn; eapply Null_Sem

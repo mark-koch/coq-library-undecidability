@@ -1,9 +1,10 @@
-From Undecidability.L Require Export L Tactics.Extract.
-Require Import PslBase.Bijection String.
+From Undecidability.L Require Export Util.L_facts Tactics.Extract.
+Require Import Undecidability.Shared.Libs.PSL.Bijection String.
 
 (** * Correctness and time bounds *)
 
 (* Typeclass for registering types *)
+
 
 Class registered (X : Type) := mk_registered
   {
@@ -11,6 +12,8 @@ Class registered (X : Type) := mk_registered
     proc_enc : forall x, proc (enc x) ; (* encodings need to be a procedure *)
     inj_enc : injective enc (* encoding is injective *)
   }.
+
+Hint Mode registered + : typeclass_instances. (* treat argument as input and force evar-freeness*)
 
 Arguments enc : simpl never.  (* Never unfold with cbn/simpl *)
 
@@ -30,6 +33,8 @@ Existing Instance TyArr.
 Arguments TyB _ {_}.
 Arguments TyArr {_} {_} _ _.
 
+Hint Mode TT + : typeclass_instances. (* treat argument as input and force evar-freeness*)
+
 Notation "! X" := (TyB X) (at level 69).
 Notation "X ~> Y" := (TyArr X Y) (right associativity, at level 70).
 
@@ -41,7 +46,7 @@ Fixpoint computes {A} (tau : TT A) {struct tau}: A -> L.term -> Type :=
     fun f t_f  =>
       proc t_f * forall (a : A) t_a,
         computes tau1 a t_a
-        ->  {v : term & (t_f t_a >* v) * computes tau2 (f a) v}
+        ->  {v : term & (app t_f t_a >* v) * computes tau2 (f a) v}
   end%type.
 
 Lemma computesProc t (ty : TT t) (f : t) fInt:
@@ -59,11 +64,12 @@ Class computable X {ty : TT X} (x : X) : Type :=
     extCorrect : computes ty x ext;
   }.
 
-Existing Instance ext | 5.
-
 Global Arguments computable {X} {ty} x.
 Global Arguments extCorrect {X} ty x {computable} : simpl never.
 Global Arguments ext {X} {ty} x {computable} : simpl never.
+
+Hint Mode computable + - +: typeclass_instances. (* treat argument as input and force evar-freeness*)
+Hint Extern 4 (@extracted ?t ?f) => let ty := constr:(_ : TT t) in notypeclasses refine (ext (ty:=ty) f) : typeclass_instances.
 
 Typeclasses Opaque ext.
 
@@ -94,7 +100,7 @@ Proof.
 Defined.  
 
 Lemma extApp t1 t2 {tt1:TT t1} {tt2 : TT t2} (f: t1 -> t2) (x:t1) (Hf : computable f) (Hx : computable x) :
-  (ext f) (ext x) >* ext (f x).
+  app (ext f) (ext x) >* ext (f x).
 Proof.
   unfold ext, extApp'.
   destruct Hf, Hx.
@@ -120,7 +126,7 @@ Qed.
 
 Lemma computesExpStep t1 t2 (tt1 : TT t1) (tt2 : TT t2) (f : t1 -> t2) (s:term) (fExt : term):
   eval s fExt -> closed s -> 
-  (forall (y : t1) (yExt : term), computes tt1 y yExt -> {v : term & computesExp tt2 (f y) (s yExt) v}%type) ->
+  (forall (y : t1) (yExt : term), computes tt1 y yExt -> {v : term & computesExp tt2 (f y) (app s yExt) v}%type) ->
   computesExp (tt1 ~> tt2) f s fExt.
 Proof.
   intros ? ? H. split. assumption. split. split. now rewrite <-H0. now destruct H0.
@@ -133,7 +139,7 @@ Lemma computesTyArr t1 t2 (tt1 : TT t1) (tt2 : TT t2) f fExt :
   proc fExt
   -> (forall (y : t1) (yExt : term),
         computes tt1 y yExt
-        -> {v : term & eval (fExt yExt) v * (proc v -> computes tt2 (f y) v)}%type)
+        -> {v : term & eval (app fExt yExt) v * (proc v -> computes tt2 (f y) v)}%type)
   -> computes (tt1 ~> tt2) f fExt.
 Proof.
   intros ? H'.

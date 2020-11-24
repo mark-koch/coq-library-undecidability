@@ -20,8 +20,8 @@ Definition Increment_Step_Rel : pRel sigPos^+ (option unit) 1 :=
         atHSB tin[@Fin0] p ->
         atHSB tout[@Fin0] (pushHSB p false) /\ yout = Some tt).
 
-Compute append_bits 1 [false; true; true].
-Compute pushHSB (append_bits 1 [false; true; true]) false.
+(* Compute append_bits 1 [false; true; true]. *)
+(* Compute pushHSB (append_bits 1 [false; true; true]) false. *)
 
 
 Definition Increment_Step : pTM sigPos^+ (option unit) 1 :=
@@ -49,18 +49,18 @@ Proof.
       intros p b bits HatBits. specialize HRead with (1 := HatBits).
       destruct ymid as [ [ (* b=true *) | (* b=false *) ] | (* not the case *) ]; cbn in *; auto.
       { (* b = true *)
-        destruct b; auto; subst. TMSimp. modpon H0. eauto.
+        destruct b; auto; subst. TMSimp. modpon H2. eauto.
       }
       { (* b = false *)
         destruct b; auto; subst. TMSimp. split; auto.
-        specialize H with (1 := HatBits).
+        specialize H2 with (1 := HatBits).
         destruct p; eauto.
-        - modpon H0. eauto.
-        - modpon H0. eauto.
+        - modpon H3. eauto.
+        - modpon H3. eauto.
       }
     }
     { (* HSB: terminate *)
-      intros p HatHSB. specialize H1 with (1 := HatHSB) as (->&->).
+      intros p HatHSB. specialize H1 with (1 := HatHSB) as ([= ->]&->).
       cbn in H0. TMSimp. split; eauto.
     }
   }
@@ -116,7 +116,7 @@ Proof.
 Qed.
 
 
-Definition Increment := GoToLSB_start;; Increment_Loop;; Move L.
+Definition Increment := GoToLSB_start;; Increment_Loop;; Move Lmove.
 
 Definition Increment_Rel : pRel sigPos^+ unit 1 :=
   fun tin '(_, tout) =>

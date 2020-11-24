@@ -1,6 +1,8 @@
 From Undecidability.L Require Import Computability.MuRec.
 From Undecidability.L.Datatypes Require Import LNat LOptions LProd Lists.
-From Undecidability Require Import FOL.DecidableEnumerable FOL.Reductions.
+From Undecidability.Synthetic Require Import DecidabilityFacts EnumerabilityFacts ListEnumerabilityFacts ReducibilityFacts.
+
+Require Import Datatypes.
 
 Inductive is_computable {A} {t : TT A} (a : A) : Prop :=
   C : computable a -> is_computable a.
@@ -14,7 +16,10 @@ Definition L_enumerable {X} `{registered X} (p : X -> Prop) :=
   exists f : nat -> option X, is_computable f /\ (enumerates f p).
 
 Definition L_recognisable {X} `{registered X} (p : X -> Prop) :=
-  exists s : term, forall x, p x <-> converges (s (enc x)).
+  exists f : X -> nat -> bool, is_computable f /\ forall x, p x <-> exists n, f x n = true.
+
+Definition L_recognisable' {X} `{registered X} (p : X -> Prop) :=
+  exists s : term, forall x, p x <-> converges (L.app s (enc x)).
 
 Section L_enum_rec.
 
@@ -31,7 +36,9 @@ Section L_enum_rec.
   Proof.
     extract.
   Qed.
-  
+
+  Import HOAS_Notations.
+
   Lemma proc_test (x : X) :
     proc (λ y, !!(ext test) !!(enc x) y).
   Proof.
@@ -39,7 +46,7 @@ Section L_enum_rec.
   Qed.
     
   Lemma L_enumerable_recognisable :
-    L_recognisable p.
+    L_recognisable' p.
   Proof.
     exists (λ x, !!mu (λ y, !!(ext test) x y)).
     intros. split; intros.
@@ -56,60 +63,122 @@ Section L_enum_rec.
       + rewrite <- H0. symmetry. cbn. Lsimpl.
       + subst. eapply H_f. exists n.
         assert ((λ y, !! (ext test) !! (enc x) y) !!(ext n) == ext (test x n)).
-        cbn. Lsimpl. rewrite H2 in *.
+        cbn. Lsimpl. cbn in *. rewrite H2 in *.
         eapply unique_normal_forms in H3; try Lproc.
         eapply inj_enc in H3.
         unfold test in H3. destruct (f n); inv H3.
-        destruct (H_d x x0); firstorder.
+        destruct (H_d x x0); firstorder congruence.
   Qed.
 
 End L_enum_rec.
+
+Definition opt_to_list n := match nat_enum n with Some x => [x] | None => [] end.
+
+Instance term_opt_to_list : computable opt_to_list.
+Proof.
+  extract.
+Qed.
   
-Definition L_nat := (fix f n := match n with 0 => [0] | S n => f n ++ [S n] end)%list.
+Definition L_nat := cumul (opt_to_list).
 
 Instance term_L_nat : computable L_nat.
 Proof.
+  unfold L_nat. unfold cumul.
   extract.
 Qed.
 
-Definition T_nat_nat := Eval cbn in @L_T (nat * nat) _.
+(* Definition T_nat_nat := Eval cbn in L_T (X := nat * nat). *)
 
-Definition pair' : nat * nat -> nat * nat := fun '(x,y) => (x,y).
+(* Definition pair' : nat * nat -> nat * nat := fun '(x,y) => (x,y). *)
 
-Instance term_pair' : computable pair'.
+(* Instance term_pair' : computable pair'. *)
+(* Proof. *)
+(*   extract. *)
+(* Qed. *)
+
+Require Import Undecidability.Shared.embed_nat Nat.
+
+(* Instance term_nat_rec {X : Set} `{registered X} : computable (@nat_rec (fun _ => X)). *)
+(* Proof. *)
+(*   unfold nat_rec, nat_rect. extract. *)
+(* Qed. *)
+
+Definition F' := (fix F (n : nat) : nat := match n with
+                                                           | 0 => 0
+                                                           | S n0 => S n0 + F n0
+                                                           end).
+
+Instance term_F' : computable F'.
 Proof.
   extract.
 Qed.
 
-Instance term_T_nat_nat : computable T_nat_nat.
+Definition F'' := (fix F (n0 : nat) : nat * nat := match n0 with
+                                                     | 0 => (0, 0)
+                                                     | S n1 => match F n1 with
+                                                               | (0, y) => (S y, 0)
+                                                               | (S x0, y) => (x0, S y)
+                                                               end
+                                             end).
+
+Instance term_F'' : computable F''.
 Proof.
-  change (computable
-    (fix T_prod (n : nat) : list (nat * nat) :=
-       match n with
-       | 0 => [(0, 0)]
-       | S n0 =>
-           (T_prod n0 ++ map pair' (L_nat n0 × L_nat n0))%list
-       end)).
   extract.
 Qed.
 
-Instance term_R_nat_nat : computable R_nat_nat.
+Instance term_embed_nat : computable embed.
 Proof.
-  change (computable (fun n : nat => nthe n (T_nat_nat n))).
+  change (computable (fun '(x, y) => y + F' (y + x))).
   extract.
 Qed.
+
+Instance term_unembed_nat : computable unembed.
+Proof.
+  unfold unembed.
+  change (computable F'').
+  exact term_F''.
+Qed.
+
+(* Definition F''' := (prod_enum nat_enum nat_enum). *)
+
+(* Instance term_prod_enum : computable F'''. *)
+(* Proof. *)
+(*   unfold F'''. *)
+(*   extract. *)
+(* Qed. *)
+
+(* Instance term_nat_enum : computable nat_enum. *)
+(* Proof. *)
+(*   extract. *)
+(* Qed. *)
+
+(* Instance term_T_nat_nat : computable T_nat_nat. *)
+(* Proof. *)
+(*   change (computable *)
+(*     (fix f (n : nat) : list (nat * nat) := match n with *)
+(*                                            | 0 => [] *)
+(*                                            | S n0 => f n0 ++ opt_to_list (F''' n0) *)
+(*                                            end)). *)
+(*   extract. *)
+(* Qed. *)
+
+(* Instance term_R_nat_nat : computable R_nat_nat. *)
+(* Proof. *)
+(*   change (computable (fun n : nat => nthe n (T_nat_nat n))). *)
+(*   extract. *)
+(* Qed. *)
+
+(* Instance term_ofNat X `{registered X} : *)
+(*   computable (@ofNat X). *)
+(* Proof. *)
+(*   extract. *)
+(* Qed. *)
 
 Definition lenumerates {X} L (p : X -> Prop) :=
   cumulative L /\ (forall x : X, p x <-> (exists m : nat, x el L m)).
 
 Definition L_enum {X} `{registered X} (p : X -> Prop) :=
   exists L, is_computable L /\ lenumerates L p.
-
-Instance term_ofNat X `{registered X} :
-  computable (@ofNat X).
-Proof.
-  extract.
-Qed.
 
 Lemma projection X Y {HX : registered X} {HY : registered Y} (p : X * Y -> Prop) :
   L_enumerable p -> L_enumerable (fun x => exists y, p (x,y)).
@@ -128,21 +197,24 @@ Lemma L_enumerable_ext X `{registered X} p q : L_enumerable p -> (forall x : X, 
 Proof.
   intros (f & cf & Hf) He. exists f; split; eauto.
   intros ?. rewrite <- He. eapply Hf.
-Qed.  
+Qed.
+
+Definition F1 {X} (T : nat -> list X) :=  (fun n => let (n, m) := unembed n in nth_error (T n) m).
+
+Instance term_F1 {X} {H : registered X} :  @computable ((nat -> list X) -> nat -> option X) ((! nat ~> ! list X) ~> ! nat ~> ! option X) (@F1 X).
+Proof.
+  extract.  
+Qed.
 
 Lemma L_enumerable_enum {X} `{registered X} (p : X -> Prop) :
   L_enum p -> L_enumerable p.
 Proof.
   intros (f & [cf] & Hf).
-  exists (@ofNat X f). split.
+  exists (F1 f). split.
   - econstructor. extract.
   - destruct Hf as [CX HX].
-    intros. rewrite HX.
-    + split; intros [n].
-      * eapply In_nth_error in H0 as [m].
-        destruct (pairs_retract (m, n)) as [k]. exists k. unfold ofNat. now rewrite H1.
-      * unfold ofNat in *. destruct R_nat_nat as [ [] | ].
-        eapply nth_error_In in H0. eauto. inv H0.
+    intros x. unfold F1.
+    now rewrite list_enumerator_to_enumerator.
 Qed.
 
 Lemma L_enumerable_halt {X} `{registered X} (p : X -> Prop) :
@@ -153,6 +225,29 @@ Proof.
   edestruct L_enumerable_recognisable with (p := p) (d := fun x y => d (x,y)) (f := f); eauto.
   - extract.
   - intros. specialize (H_d (x,y)). destruct (d (x,y)); intuition.
-  - now exists (fun x0 => x (enc x0)). 
+  - now exists (fun x0 => L.app x (enc x0)). 
 Qed.  
 
+Import L_Notations.
+
+Lemma L_recognisable'_recognisable {X} `{registered X} (p : X -> Prop) :
+  L_recognisable p -> L_recognisable' p.
+Proof.
+  intros (f & [c_f] & H_f).
+  exists (lam (mu (lam (ext f 1 0)))).
+  intros. 
+  assert (((lam (mu (lam ((ext f 1) 0)))) (enc x)) >* mu (lam (ext f (enc x) 0))) by Lsimpl.
+  rewrite H0. rewrite mu_spec.
+  - rewrite H_f. split; intros [n]; exists n.
+    Lsimpl. now rewrite H1.
+    eapply enc_extinj.
+    now assert ((lam (((ext f) (enc x)) 0)) (ext n) == enc (f x n)) as <- by Lsimpl.
+  - Lproc.
+  - intros. exists (f x n). Lsimpl.
+Qed.    
+
+Lemma L_recognisable_halt {X} `{registered X} (p : X -> Prop) :
+  L_recognisable p -> p ⪯ converges.
+Proof.
+  intros. eapply L_recognisable'_recognisable in H0 as  (f & H_f). now exists (fun x0 => f (enc x0)). 
+Qed.

@@ -22,7 +22,7 @@ End Id.
 Section Relabel.
   Variable (sig : finType) (n : nat).
   Variable F F' : finType.
-  Variable pM : { M : mTM sig n & states M -> F }.
+  Variable pM : { M : TM sig n & state M -> F }.
   Variable p : F -> F'.
 
   Definition Relabel : pTM sig F' n :=
@@ -58,7 +58,7 @@ Section Return.
 
   Variable (sig : finType) (n : nat).
   Variable F : finType.
-  Variable pM : { M : mTM sig n & states M -> F }.
+  Variable pM : { M : TM sig n & state M -> F }.
   Variable F' : finType.
   Variable p : F'.
 
@@ -90,14 +90,27 @@ Arguments Return : simpl never.
 
 (** Helper tactics for match *)
 
+Local Ltac print e := idtac.                                  (* idtac e *)
+Local Tactic Notation "print_str" string(e1) := idtac. (* idtac e1 *)
+Local Tactic Notation "print2" ident(e1) string(e2) := idtac. (* idtac e1 e2 *)
+Local Ltac print_type e := first [ let x := type of e in print x | print_str "Untyped:"; print e ].
+
+Ltac print_goal_cbn :=
+  match goal with
+  | [ |- ?H ] =>
+    let H' := eval cbn in H in print H'
+  end.
+
 (** This tactic destructs a variable recursivle and shelves each goal where it couldn't destruct the variable further. The purpose of this tactic is to pre-instantiate functions to relations with holes of the form [Param -> Rel _ _]. We need this for the [Switch] Machine.
 The implementation of this tactic is quiete uggly but works for parameters with up to 9 constructor arguments. This tactic may generates a lot of warnings, which can be ignored. *)
+Export Set Warnings "-unused-intro-pattern".
+
 Ltac destruct_shelve e :=
   cbn in e;
-  idtac "Input:";
+  print_str "Input:";
   print_type e;
-  idtac "Output:";
-  print_goal_cbn; 
+  print_str "Output:";
+  print_goal_cbn;
   let x1 := fresh "x" in
   let x2 := fresh "x" in
   let x3 := fresh "x" in
@@ -107,19 +120,18 @@ Ltac destruct_shelve e :=
   let x7 := fresh "x" in
   let x8 := fresh "x" in
   let x9 := fresh "x" in
-  first [ destruct e as [x1|x2|x3|x4|x5|x6|x7|x8|x9]; idtac e "has 9 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7 | try destruct_shelve x8 | try destruct_shelve x9]; shelve
-        | destruct e as [x1|x2|x3|x4|x5|x6|x7|x8]; idtac e "has 8 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7 | try destruct_shelve x8]; shelve
-        | destruct e as [x1|x2|x3|x4|x5|x6|x7]; idtac e "has 7 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7]; shelve
-        | destruct e as [x1|x2|x3|x4|x5|x6]; idtac e "has 6 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6]; shelve
-        | destruct e as [x1|x2|x3|x4|x5]; idtac e "has 5 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5]; shelve
-        | destruct e as [x1|x2|x3|x4]; idtac e "has 4 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4]; shelve
-        | destruct e as [x1|x2|x3]; idtac e "has 3 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3]; shelve
-        | destruct e as [x1|x2]; idtac e "has 2 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2]; shelve
-        | destruct e as [x1]; idtac e "has 1 constructors"; [ try destruct_shelve x1 ]; shelve
-        | destruct e as []; idtac e "has 0 constructors"; shelve
+  first [ destruct e as [x1|x2|x3|x4|x5|x6|x7|x8|x9]; print2 e "has 9 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7 | try destruct_shelve x8 | try destruct_shelve x9]; shelve
+        | destruct e as [x1|x2|x3|x4|x5|x6|x7|x8]; print2 e "has 8 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7 | try destruct_shelve x8]; shelve
+        | destruct e as [x1|x2|x3|x4|x5|x6|x7]; print2 e "has 7 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6 | try destruct_shelve x7]; shelve
+        | destruct e as [x1|x2|x3|x4|x5|x6]; print2 e "has 6 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5 | try destruct_shelve x6]; shelve
+        | destruct e as [x1|x2|x3|x4|x5]; print2 e "has 5 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4 | try destruct_shelve x5]; shelve
+        | destruct e as [x1|x2|x3|x4]; print2 e "has 4 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3 | try destruct_shelve x4]; shelve
+        | destruct e as [x1|x2|x3]; print2 e "has 3 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2 | try destruct_shelve x3]; shelve
+        | destruct e as [x1|x2]; print2 e "has 2 constructors"; [ try destruct_shelve x1 | try destruct_shelve x2]; shelve
+        | destruct e as [x1]; print2 e "has 1 constructors"; [ try destruct_shelve x1 ]; shelve
+        | destruct e as []; print2 e "has 0 constructors"; shelve
         ]
 .
-  
 
 (* Eval simpl in ltac:(intros ?e; destruct_shelve e) : (option (bool + (bool + (bool + bool)))) -> Rel _ _. *)
 
@@ -127,8 +139,16 @@ Ltac destruct_shelve e :=
 Ltac smpl_match_case_solve_RealiseIn :=
   eapply RealiseIn_monotone'; [ | shelve].
 
+(** This disables the automatic exploration of all possible branvhes in a switch machine. 
+It is useful if some branches do perform the same work to nos split the proof unless required.
+See [CaseBool] for an example. Usage with the tactical [destructBoth] allows to refine the relation when performing caseSplits *)
+Definition TM_Correct_noSwitchAuto := unit.
+Opaque TM_Correct_noSwitchAuto.
+Ltac TM_Correct_noSwitchAuto := let f := fresh "flag" in assert (f := (tt:TM_Correct_noSwitchAuto)).
+
 Ltac smpl_match_RealiseIn :=
-  lazymatch goal with
+  once lazymatch goal with
+  | H : TM_Correct_noSwitchAuto |- _ => eapply Switch_RealiseIn with (R2:= fun x => _ );[TM_Correct| ]
   | [ |- Switch ?M1 ?M2 ⊨c(?k1) ?R] =>
     is_evar R;
     let tM2 := type of M2 in
@@ -137,7 +157,7 @@ Ltac smpl_match_RealiseIn :=
     | ?F -> _ =>
       eapply (Switch_RealiseIn
                 (F := FinType(EqType F))
-                (R2 := ltac:(now (print_goal; intros x; destruct_shelve x))));
+                (R2 := ltac:(now ((*print_goal;*) intros x; destruct_shelve x))));
       [
         smpl_match_case_solve_RealiseIn
       | intros x; repeat destruct _; smpl_match_case_solve_RealiseIn
@@ -147,7 +167,8 @@ Ltac smpl_match_RealiseIn :=
 .
 
 Ltac smpl_match_Realise :=
-  lazymatch goal with
+  once lazymatch goal with
+  | H : TM_Correct_noSwitchAuto |- _ => eapply Switch_Realise with (R2:= fun x => _ );[TM_Correct| ]
   | [ |- Switch ?M1 ?M2 ⊨ ?R] =>
     is_evar R;
     let tM2 := type of M2 in
@@ -165,7 +186,8 @@ Ltac smpl_match_Realise :=
 
 
 Ltac smpl_match_Terminates :=
-  lazymatch goal with
+  once lazymatch goal with
+  | H : TM_Correct_noSwitchAuto |- _ => eapply Switch_TerminatesIn with (T2:= fun x => _ );[TM_Correct|TM_Correct | ]
   | [ |- projT1 (Switch ?M1 ?M2) ↓ ?R] =>
     is_evar R;
     let tM2 := type of M2 in
@@ -186,7 +208,7 @@ Ltac smpl_match_Terminates :=
 
 (* There is no rule for [Id] on purpose. *)
 Ltac smpl_TM_Combinators :=
-  lazymatch goal with
+  once lazymatch goal with
   | [ |- Switch _ _ ⊨ _] => smpl_match_Realise
   | [ |- Switch _ _ ⊨c(_) _] => smpl_match_RealiseIn
   | [ |- projT1 (Switch _ _) ↓ _] => smpl_match_Terminates

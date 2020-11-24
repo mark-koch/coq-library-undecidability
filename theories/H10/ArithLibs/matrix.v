@@ -9,9 +9,10 @@
 
 (** ** Matric computation *)
 
-Require Import Arith Omega Eqdep_dec ZArith.
+Require Import Arith ZArith.
 
-From Undecidability.Shared.Libs.DLW.Utils Require Import utils_tac gcd prime binomial sums.
+From Undecidability.Shared.Libs.DLW.Utils 
+  Require Import utils_tac gcd prime binomial sums.
 
 Set Implicit Arguments.
 
@@ -49,7 +50,7 @@ Section rings.
            c⊕c',d⊕d').
   Defined.
 
-  Infix "⊞" := PL22 (at level 50, left associativity).
+  Local Infix "⊞" := PL22 (at level 50, left associativity).
  
   Definition MI22 : M22 -> M22.
   Proof.
@@ -58,7 +59,7 @@ Section rings.
            ∸c,∸d).
   Defined.
 
-  Notation "⊟" := MI22.
+  Local Notation "⊟" := MI22.
 
   Fact M22_equal (a b c d a' b' c' d' : R) : a = a' -> b = b' -> c = c' -> d = d' -> (a,b,c,d) = (a',b',c',d').
   Proof. intros; subst; trivial. Qed.
@@ -107,7 +108,7 @@ Section rings.
            c⊗a' ⊕ d⊗c' , c⊗b' ⊕ d⊗d' ).
   Defined.
 
-  Infix "⊠" := MU22 (at level 40, left associativity).
+  Local Infix "⊠" := MU22 (at level 40, left associativity).
 
   Tactic Notation "myauto" integer(n) := do n intros (((?&?)&?)&?); apply M22_equal; ring.
 
@@ -234,7 +235,7 @@ Section ring_morphism.
 
   Variable phi : X -> Y.
 
-  Notation "〚 x 〛" := (phi x).
+  Local Notation "〚 x 〛" := (phi x).
 
   Record ring_morphism : Prop := mk_ring_morph {
     morph_z : 〚 zX 〛= zY;

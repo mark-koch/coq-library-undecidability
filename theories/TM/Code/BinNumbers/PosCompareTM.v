@@ -107,13 +107,13 @@ Proof.
       destruct s0 as [ b0' | ], s1 as [ b1' | ]; cbn in *; auto.
       + destruct b0' eqn:Eb0', b1' eqn:Eb1', b0; TMSimp; eauto.
       + TMSimp. destruct b0'; auto.
-        * destruct b0; auto. split; eauto. TMSimp. modpon H1. auto.
-        * destruct b0; auto. split; eauto. TMSimp. modpon H1. auto.
+        * destruct b0; auto. split; eauto. TMSimp. modpon H2. auto.
+        * destruct b0; auto. split; eauto. TMSimp. modpon H2. auto.
     - intros. modpon HReadSym3. clear HReadSym1 HReadSym2 HReadSym4.
       destruct s0 as [ b0' | ], s1 as [ b1' | ]; cbn in *; auto.
       TMSimp. destruct b1' eqn:Eb1', b1; TMSimp; eauto.
-      * modpon H1. repeat split; eauto.
-      * modpon H1. repeat split; eauto.
+      * modpon H2. repeat split; eauto.
+      * modpon H2. repeat split; eauto.
     - intros. modpon HReadSym4. clear HReadSym1 HReadSym2 HReadSym3.
       destruct s0 as [ b0' | ]; eauto; try inv_pair. TMSimp. auto.
   }
@@ -208,7 +208,7 @@ Qed.
 
 
 Definition Compare := GoToLSB_start@[|Fin0|];; GoToLSB_start@[|Fin1|];;
-                       Switch (Compare_Loop Eq) (fun (r : comparison) => Return ((Move L)@[|Fin0|];; (Move L)@[|Fin1|]) r).
+                       Switch (Compare_Loop Eq) (fun (r : comparison) => Return ((Move Lmove)@[|Fin0|];; (Move Lmove)@[|Fin1|]) r).
 
 Definition Compare_Rel : pRel sigPos^+ comparison 2 :=
   fun tin '(yout, tout) =>
@@ -228,7 +228,8 @@ Proof.
     - apply Compare_Loop_Realise. }
   {
     intros tin (yout, tout) H. TMSimp. intros.
-    rename H1 into HLoopA, H3 into HLoopB, H4 into HLoopC, H5 into HLoopD. rename H2 into HSwitch. rename H into HGoToHSB', H0 into HGoToHSB.
+    rename H2 into HLoopA, H5 into HLoopB, H6 into HLoopC, H7 into HLoopD.
+    rename H4 into HSwitch. rename H into HGoToHSB', H0 into HGoToHSB.
     modpon HGoToHSB. modpon HGoToHSB'.
     destruct p0, p1.
     - modpon HLoopA. TMSimp. unfold Pos.compare. destruct (Pos.compare_cont Eq p0 p1); TMSimp; (repeat split; eauto; now apply atHSB_moveLeft_contains).
@@ -253,7 +254,7 @@ Definition Max_Rel : pRel sigPos^+ comparison 3 :=
     forall (p0 p1 : positive),
       tin[@Fin0] ≃ p0 ->
       tin[@Fin1] ≃ p1 ->
-      isRight tin[@Fin2] ->
+      isVoid tin[@Fin2] ->
       tout[@Fin0] ≃ p0 /\
       tout[@Fin1] ≃ p1 /\
       tout[@Fin2] ≃ Pos.max p0 p1 /\
@@ -272,15 +273,13 @@ Proof.
   eapply Realise_monotone.
   { unfold Max. TM_Correct.
     - apply Compare_Realise.
-    - apply CopyValue_Realise with (X := positive).
-    - apply CopyValue_Realise with (X := positive).
-    - apply CopyValue_Realise with (X := positive). }
+  }
   {
     intros tin (yout, tout) H. cbn in *. intros p0 p1 Hp0 Hp1 HRight. TMSimp.
     modpon H. destruct ymid.
-    - TMSimp. modpon H0. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
-    - TMSimp. modpon H0. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
-    - TMSimp. modpon H0. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
+    - TMSimp. modpon H3. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
+    - TMSimp. modpon H3. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
+    - TMSimp. modpon H3. repeat split; eauto. unfold Pos.max. rewrite <- H2. auto.
   }
 Qed.
 

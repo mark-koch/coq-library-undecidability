@@ -124,7 +124,7 @@ Section DecBool.
 
 End DecBool.
 
-Hint Resolve dec_decb.
+Hint Resolve dec_decb : core.
 Arguments decb _ {_}.
 Arguments decb1 {_} _ {_} _.
 Arguments decb2 {_} {_} _ {_} _.
@@ -185,7 +185,7 @@ Qed.
 
 
 
-Require Import List Omega.
+Require Import List Omega Lia.
 
 Instance In_dec (X: Type) {D: Dis X}: Dec2 (@In X).
 Proof.

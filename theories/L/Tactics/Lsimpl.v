@@ -1,6 +1,7 @@
-From Undecidability.L Require Export L.
+From Undecidability.L Require Export Util.L_facts.
 From Undecidability.L.Tactics Require Import Lproc Lbeta Lrewrite Reflection mixedTactics.
 Require Import ListTactics.
+Import L_Notations.
 
 Local Ltac wLsimpl' _n := intros;try reflexivity';try standardizeGoal _n ; try reflexivity'.
 Local Ltac wLsimpl := wLsimpl' 100.
@@ -20,7 +21,7 @@ Ltac Lreduce :=
 
 (*Lsimpl that uses correctnes lemmas*)
 Ltac Lsimpl :=intros(*;repeat foldLocalInts*);
-  lazymatch goal with
+  once lazymatch goal with
   | |- _ >(<= _ ) _ => Lreduce;try Lreflexivity
   | |- _ ⇓(_ ) _ => repeat progress Lbeta;try Lreflexivity
   | |- _ ⇓(<= _ ) _ => Lreduce;try Lreflexivity
@@ -61,7 +62,7 @@ Tactic Notation "redStep" "in" hyp(h) := redStep in h at 1.
 
 Lemma rho_correct s t : proc s -> lambda t -> rho s t >* s (rho s) t.
 Proof.
-  intros. unfold rho,r. redStep at 1. apply star_trans_l. Lsimpl. 
+  intros. unfold rho,r. redStep at 1. apply star_trans_l. Lsimpl.
 Qed.
 
 Lemma rho_correctPow s t : proc s -> lambda t -> rho s t >(3) s (rho s) t.
@@ -119,4 +120,11 @@ Hint Resolve I_proc K_proc omega_proc Omega_closed: LProc.
 Hint Extern 0 (I >(_) _)=> unfold I;reflexivity : Lrewrite.
 Hint Extern 0 (K >(_) _)=> unfold K;reflexivity : Lrewrite.
 
+
+Lemma Omega_diverge t: ~ eval Omega t.
+Proof.
+  intros (?&?). remember Omega as s eqn:HO. induction H;subst.
+  -inv H0. easy.
+  -unfold Omega in H. inv H. cbn in *. eauto. all:easy.
+Qed.
 

@@ -1,4 +1,4 @@
-From Undecidability Require Import TM.Prelim TM.TM.
+From Undecidability Require Import TM.Util.Prelim TM.Util.TM_facts.
 
 (** * Mirror Operator *)
 
@@ -26,14 +26,14 @@ Section Mirror.
   Variable pM : pTM sig F n.
 
   Definition Mirror_trans :
-    states (projT1 pM) * Vector.t (option sig) n ->
-    states (projT1 pM) *
+    state (projT1 pM) * Vector.t (option sig) n ->
+    state (projT1 pM) *
     Vector.t (option sig * move) n :=
     fun qsym =>
       let (q', act) := trans qsym in
       (q', mirror_acts act).
 
-  Definition MirrorTM : mTM sig n :=
+  Definition MirrorTM : TM sig n :=
     {|
       trans := Mirror_trans;
       start := start (projT1 pM);
@@ -43,7 +43,7 @@ Section Mirror.
   Definition Mirror : pTM sig F n :=
     (MirrorTM; projT2 pM).
 
-  Definition mirrorConf : mconfig sig (states (projT1 pM)) n -> mconfig sig (states (projT1 pM)) n :=
+  Definition mirrorConf : mconfig sig (state (projT1 pM)) n -> mconfig sig (state (projT1 pM)) n :=
     fun c => mk_mconfig (cstate c) (mirror_tapes (ctapes c)).
 
   Lemma mirrorConf_involution c : mirrorConf (mirrorConf c) = c.
@@ -133,7 +133,7 @@ Arguments Mirror_T { n sig } T x y /.
 
 
 Ltac smpl_TM_Mirror :=
-  lazymatch goal with
+  once lazymatch goal with
   | [ |- Mirror _ ⊨ _ ] => eapply Mirror_Realise
   | [ |- Mirror _ ⊨c(_) _ ] => eapply Mirror_RealiseIn
   | [ |- projT1 (Mirror _) ↓ _ ] => eapply Mirror_Terminates

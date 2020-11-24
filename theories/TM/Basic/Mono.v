@@ -1,17 +1,17 @@
-From Undecidability Require Import TM.TM.
+From Undecidability Require Import TM.Util.TM_facts.
 
 (** * Basic 1-Tape Machines *)
 
 
 (** ** Helper functions *)
 Section Mk_Mono.
-  Variable (sig states : finType).
-  Variable mono_trans : states -> option sig -> states * (option sig * move).
-  Variable (init : states) (fin : states -> bool).
+  Variable (sig state : finType).
+  Variable mono_trans : state -> option sig -> state * (option sig * move).
+  Variable (init : state) (fin : state -> bool).
 
-  Definition Mk_Mono_TM : mTM sig 1.
+  Definition Mk_Mono_TM : TM sig 1.
   Proof.
-    split with (states := states).
+    split with (state := state).
     - intros (q&tape).
       pose proof (mono_trans q (tape[@Fin0])) as (q', act).
       apply (q', [| act |]).
@@ -65,7 +65,7 @@ Section DoAct_Derived.
   Variable c : sig. (* for Write *)
   Variable (D : move). (* for Move *)
 
-  Definition Write : pTM sig unit 1 := DoAct (Some c, N).
+  Definition Write : pTM sig unit 1 := DoAct (Some c, Nmove).
 
   Definition Write_Rel : pRel sig unit 1 :=
     Mk_R_p (ignoreParam (fun t t' => t' = midtape (left t) c (right t))).
@@ -126,9 +126,9 @@ Section CaseChar.
   Variable sig : finType.
   Variable (F : finType) (f : option sig -> F).
 
-  Definition CaseChar_TM : mTM sig 1 :=
+  Definition CaseChar_TM : TM sig 1 :=
     {|
-      trans := fun '(_, sym) => (Some (f sym[@Fin0]), [| (None, N) |]);
+      trans := fun '(_, sym) => (Some (f sym[@Fin0]), [| (None, Nmove) |]);
       start := None;
       halt := fun s => match s with
                     | None => false
@@ -184,7 +184,7 @@ Arguments ReadChar_Rel sig x y /.
 (** ** Tactic Support *)
 
 Ltac smpl_TM_Mono :=
-  lazymatch goal with
+  once lazymatch goal with
   | [ |- DoAct _ ⊨ _] => eapply RealiseIn_Realise; eapply DoAct_Sem
   | [ |- DoAct _ ⊨c(_) _] => eapply DoAct_Sem
   | [ |- projT1 (DoAct _) ↓ _] => eapply RealiseIn_TerminatesIn; eapply DoAct_Sem

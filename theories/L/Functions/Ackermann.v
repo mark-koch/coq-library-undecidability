@@ -1,4 +1,5 @@
 From Undecidability.L Require Import Datatypes.LNat Tactics.LTactics.
+Import Ring.
 
 (** ** Computability of Ackermann *)
 
@@ -23,12 +24,12 @@ Local Lemma Ack_pos n m : 0 < ackermann n m.
   induction m as [m IHm] using lt_wf_ind.
   destruct n. all:destruct m.
   all:eauto.
-  all:cbn in *. all:try omega.
+  all:cbn in *. all:try lia.
   all:eauto.
 Qed.
 
 Lemma termT_ackermann :
-  computableTime ackermann
+  computableTime' ackermann
                  (fun x _ =>
                     (14,
                      fun y _ =>
@@ -36,8 +37,9 @@ Lemma termT_ackermann :
 Proof.
   extract.
   Import Ring Arith.
-  cbn. fold ackermann. 
-  repeat (cbn ;intros;intuition idtac;try destruct _;try ring_simplify;try lia).
+  cbn. fold ackermann. Import Lia.
+  repeat (cbn ;intros;intuition idtac;try destruct _).
+  all:ring_simplify. all:try nia.
   all:repeat change (fix ackermann_Sn (m : nat) : nat :=
     match m with
     | 0 => fun _ => ackermann x0 1

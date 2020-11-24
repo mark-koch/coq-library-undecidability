@@ -1,4 +1,5 @@
-From Undecidability.L Require Export Computability.Decidability Datatypes.LNat L.
+From Undecidability.L Require Import Computability.Decidability Datatypes.LNat L.
+Require Import Nat.
 
 (** ** Decidabiity of closedness, boundedness and procness *)
 
@@ -9,15 +10,17 @@ match t with
 | lam s => boundb (S k) s
 end.
 
-Instance term_boundb : computable boundb.
+
+Instance term_boundb : computableTime' boundb (fun _ _ => (5,fun s _ => (size s * 31+9,tt))).
 Proof.
-  extract.
+  extract. solverec.
+  unfold c__leb2, leb_time, c__leb. nia. 
 Defined.
 
 Lemma boundb_spec k t : Bool.reflect (bound k t) (boundb k t).
 Proof.
   revert k. induction t;intros;cbn. simpl.  
-  -destruct (Nat.leb_spec0 k n); simpl;constructor.  intros H. inv H. omega. constructor. omega.
+  -destruct (Nat.leb_spec0 k n); simpl;constructor.  intros H. inv H. lia. constructor. lia.
   -specialize (IHt1 k). specialize (IHt2 k). inv IHt1;simpl.
    +inv IHt2;constructor.
     *now constructor.
@@ -35,21 +38,22 @@ Lemma closedb_spec s : Bool.reflect (closed s) (closedb s).
   destruct (boundb_spec 0 s);constructor; rewrite closed_dcl;auto.
 Qed.
 
-Instance term_closedb : computable closedb.
+Instance termT_closedb : computableTime' closedb (fun s _ => (size s * 31+15,tt)).
 Proof.
-  exact _.
+  change closedb with (fun x => boundb 0 x).
+  extract. solverec.
 Defined.
 
 
-Fixpoint lambdab (t : term) : bool :=
+Definition lambdab (t : term) : bool :=
 match t with
 | lam _ => true
 | _ => false
 end.
 
-Instance term_lambdab : computable lambdab.
+Instance term_lambdab : computableTime' lambdab (fun _ _ => (11,tt)).
 Proof.
-  extract.
+  extract. solverec.
 Defined.
 
 Lemma lambdab_spec t : Bool.reflect (lambda t) (lambdab t).
