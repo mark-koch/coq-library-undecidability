@@ -77,8 +77,11 @@ Definition solutions (B : BSRS) f n :=
   opair ∅ (enc_stack B) ∈ f ∧ ∀ ∀ ∀ $2 ∈ shift 3 n --> opair $2 $1 ∈ shift 3 f
                --> combinations B $1 $0 --> opair (σ $2) $0 ∈ shift 3 f.
 
+Definition natural t :=
+  ∀ inductive $0 --> shift 1 t ∈ $0.
+
 Definition solvable (B : BSRS) :=
-  ∃ ∃ ∃ ∃ ∃ $4 ∈ ω ∧ function' $3 ∧ solutions B $3 $4 ∧ opair $4 $0 ∈ $3 ∧ $2 ∈ $0 ∧ $2 ≡ opair $1 $1.
+  ∃ ∃ ∃ ∃ ∃ natural $4 ∧ function' $3 ∧ solutions B $3 $4 ∧ opair $4 $0 ∈ $3 ∧ $2 ∈ $0 ∧ $2 ≡ opair $1 $1.
 
 
 
@@ -136,26 +139,26 @@ Section ZF.
     apply (@M_ZF (fun _ => ∅) ax_union). cbn; tauto.
   Qed.
 
-  Lemma M_power x y :
+  (*Lemma M_power x y :
     x ∈ PP y <-> x ⊆ y.
   Proof.
     apply (@M_ZF (fun _ => ∅) ax_power). cbn; tauto.
-  Qed.
+  Qed.*)
 
   Definition M_inductive x :=
     ∅ ∈ x /\ forall y, y ∈ x -> σ y ∈ x.
 
-  Lemma M_om1 :
+  (*Lemma M_om1 :
     M_inductive ω.
   Proof.
     apply (@M_ZF (fun _ => ∅) ax_om1). cbn; tauto.
-  Qed.
+  Qed.*)
 
-  Lemma M_om2 x :
+  (*Lemma M_om2 x :
     M_inductive x -> ω ⊆ x.
   Proof.
     apply (@M_ZF (fun _ => ∅) ax_om2). cbn; tauto.
-  Qed.
+  Qed.*)
 
   Definition agrees_fun phi (P : V -> Prop) :=
     forall x rho, P x <-> (x.:rho) ⊨ phi.
@@ -361,11 +364,11 @@ Section ZF.
     | S n => σ (numeral n)
     end.
 
-  Lemma numeral_omega n :
+  (*Lemma numeral_omega n :
     numeral n ∈ ω.
   Proof.
     induction n; cbn; now apply M_om1.
-  Qed.
+  Qed.*)
 
   Definition trans x :=
     forall y, y ∈ x -> y ⊆ x.
@@ -665,13 +668,22 @@ Section ZF.
     apply enc_stack_el.
   Qed.
 
+  Definition M_natural x :=
+    forall y, M_inductive y -> x ∈ y.
+   
+  Lemma numeral_natural n :
+    M_natural (numeral n).
+  Proof.
+    intros x H. induction n; firstorder.
+  Qed.
+
   Theorem PCP_ZF1 B s :
     derivable B s s -> forall rho, rho ⊨ solvable B.
   Proof.
     intros H rho. destruct (derivable_derivations H) as [n Hn]. unfold solvable.
     exists (numeral n), (M_enc_derivations B n), (M_opair (M_enc_string s) (M_enc_string s)).
     exists (M_enc_string s), (M_enc_stack (derivations B n)). repeat split.
-    - apply numeral_omega.
+    - cbn. apply numeral_natural.
     - unfold function'. intros k x y H1 H2. apply VIEQ. apply (enc_derivations_fun H1 H2).
     - specialize (enc_derivations_base B n). intros HB.
       erewrite <- eval_enc_stack in HB. apply HB.
@@ -787,13 +799,13 @@ Section ZF.
   Qed.
 
   Definition standard :=
-    forall x, x ∈ ω -> exists n, x = numeral n.
+    forall x, M_natural x -> exists n, x = numeral n.
 
   Theorem PCP_ZF2 B rho :
     standard -> rho ⊨ solvable B -> exists s, derivable B s s.
   Proof.
     intros VIN (n & f & p & s & X & [[[[[H1 H2] H3] H4] H5] H6]).
-    assert (H1' : n ∈ ω) by apply H1. clear H1.
+    assert (H1' : M_natural n) by apply H1. clear H1.
     assert (H6' : p = M_opair s s) by apply VIEQ, H6. clear H6.
     assert (H4' : M_opair n X ∈ f) by apply H4. clear H4.
     assert (H5' : p ∈ X) by apply H5. clear H5.

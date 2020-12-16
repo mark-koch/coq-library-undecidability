@@ -104,6 +104,21 @@ Proof.
     apply AllE. eapply CE2. apply Ctx. firstorder.
 Qed.
 
+Lemma ZF_numeral_natural' T n x :
+  ZFeq' <<= T -> T ⊢ inductive x -> T ⊢ tnumeral n ∈ x.
+Proof.
+  intros HT H1. induction n; cbn.
+  - eapply CE1. apply H1.
+  - eapply IE; try apply IHn. apply CE2 in H1.
+    apply (AllE (tnumeral n)) in H1. cbn in H1. now subsimpl_in H1.
+Qed.
+
+Lemma ZF_numeral_natural n :
+  ZFeq' ⊢ natural (tnumeral n).
+Proof.
+  prv_all x. apply II. eapply ZF_numeral_natural'; auto.
+Qed.
+
 Lemma ZF_refl' T x :
   ZFeq' <<= T -> T ⊢ x ≡ x.
 Proof.
@@ -695,7 +710,7 @@ Proof.
   apply ExI with (enc_stack (derivations B n)). cbn.
   rewrite !enc_stack_subst, !combinations_subst. cbn. subsimpl.
   repeat apply CI.
-  - apply ZF_numeral.
+  - apply ZF_numeral_natural.
   - prv_all x. prv_all y. prv_all z.
     apply enc_derivations_functional.
   - apply enc_derivations_base.

@@ -36,7 +36,8 @@ Section ZFM.
   Lemma SET_standard :
     standard SET_interp.
   Proof.
-    intros x. cbn. destruct x. unfold Som, NS, IN. cbn.
+    intros x H. specialize (H Som omAx1). revert H.
+    cbn. destruct x. unfold Som, NS, IN. cbn.
     rewrite <- (CR1 Aom). intros [n Hn]. exists n.
     rewrite <- Anumeral_numeral. now apply Aeq_p1_NS_eq.
   Qed.
