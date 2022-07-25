@@ -29,7 +29,7 @@ Section Tarski.
     
     Variable D : Type.
     Variable I : interp D.
-        
+
     Lemma eval_ext rho xi t :
       (forall x, rho x = xi x) -> eval rho t = eval xi t.
     Proof.
@@ -51,7 +51,7 @@ Section Tarski.
     Proof.
       induction phi  as [ | b P v | | ] in rho, xi |- *; cbn; intros H.
       - reflexivity.
-      - erewrite map_ext; try reflexivity. intros t. now apply eval_ext.
+      - erewrite map_ext. try reflexivity. intros t. now apply eval_ext.
       - specialize (IHphi1 rho xi). specialize (IHphi2 rho xi). destruct b0; intuition.
       - destruct q.
         + split; intros H' d; eapply IHphi; try apply (H' d). 1,2: intros []; cbn; intuition.

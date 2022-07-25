@@ -919,3 +919,10 @@ FOL/Deduction/FragmentSequent.v
 FOL/Deduction/FragmentSequentFacts.v
 
 
+FOL/Tennenbaum/Utils/Iff.v
+FOL/Tennenbaum/Utils/DN.v
+FOL/Tennenbaum/Utils/Synthetic.v
+FOL/Tennenbaum/Tarski/FullCoreT.v
+FOL/Tennenbaum/Tarski/FullFactsT.v
+FOL/Tennenbaum/Peano.v
+FOL/Tennenbaum/Formulas.v
